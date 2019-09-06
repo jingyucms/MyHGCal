@@ -5,7 +5,7 @@ from Configuration.StandardSequences.Eras import eras
 
 from myParam_cff import *
 
-process = cms.Process('RECO',eras.Phase2C9_timing_layer_bar)
+process = cms.Process('RECO',eras.Phase2C8_timing_layer_bar)
 
 # import of standard configurations
 process.load('Configuration.StandardSequences.Services_cff')

@@ -42,12 +42,12 @@
 #include "TH1D.h"
 #include "TH2D.h"
 
-class HGCalLayerClusterStudy : public edm::one::EDAnalyzer<edm::one::WatchRuns,edm::one::SharedResources> {
+class HGCalScintLayerClusterStudy : public edm::one::EDAnalyzer<edm::one::WatchRuns,edm::one::SharedResources> {
 
 public:
 
-  explicit HGCalLayerClusterStudy(const edm::ParameterSet&);
-  ~HGCalLayerClusterStudy() override {}
+  explicit HGCalScintLayerClusterStudy(const edm::ParameterSet&);
+  ~HGCalScintLayerClusterStudy() override {}
   
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -74,7 +74,7 @@ private:
 };
 
 
-HGCalLayerClusterStudy::HGCalLayerClusterStudy(const edm::ParameterSet& iConfig) :
+HGCalScintLayerClusterStudy::HGCalScintLayerClusterStudy(const edm::ParameterSet& iConfig) :
   nameDetector_(iConfig.getParameter<std::string>("DetectorName")), 
   verbosity_(iConfig.getUntrackedParameter<int>("Verbosity",0)),
   layers_(0), firstLayer_(1) {
@@ -94,10 +94,10 @@ HGCalLayerClusterStudy::HGCalLayerClusterStudy(const edm::ParameterSet& iConfig)
       << "HGCal DetectorName given as " << nameDetector_ << " must be: "
       << "\"HGCalHESiliconSensitive\", \"HGCalHESiliconSensitive\", or \"HGCalHEScintillatorSensitive\"!"; 
   }
-  edm::LogVerbatim("HGCalValidation") << "Initialize HGCalLayerClusterStudy for " << nameDetector_;
+  edm::LogVerbatim("HGCalStudies") << "Initialize HGCalScintLayerClusterStudy for " << nameDetector_;
 }
 
-void HGCalLayerClusterStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void HGCalScintLayerClusterStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
   desc.add<std::string>("DetectorName","HGCalHEScintillatorSensitive");
   desc.add<edm::InputTag>("RecHitSource",edm::InputTag("HGCalRecHit","HGCHEBRecHits"));
@@ -106,7 +106,7 @@ void HGCalLayerClusterStudy::fillDescriptions(edm::ConfigurationDescriptions& de
   descriptions.add("hgcalLayerClusterStudyHESintillator",desc);
 }
 
-void HGCalLayerClusterStudy::beginRun(edm::Run const&,
+void HGCalScintLayerClusterStudy::beginRun(edm::Run const&,
                                 edm::EventSetup const& iSetup) {
 
   edm::ESHandle<HGCalDDDConstants>  pHGDC;
@@ -137,7 +137,7 @@ void HGCalLayerClusterStudy::beginRun(edm::Run const&,
   }
 }
 
-void HGCalLayerClusterStudy::analyze(const edm::Event& iEvent, 
+void HGCalScintLayerClusterStudy::analyze(const edm::Event& iEvent, 
 			       const edm::EventSetup& iSetup) {
 
   edm::Handle<HGCRecHitCollection> theRecHits;
@@ -148,7 +148,7 @@ void HGCalLayerClusterStudy::analyze(const edm::Event& iEvent,
 
   edm::ESHandle<HGCalGeometry> geom;
   iSetup.get<IdealGeometryRecord>().get(nameDetector_, geom);
-  if (!geom.isValid()) edm::LogWarning("HGCalValidation") << "Cannot get valid HGCalGeometry Object for " << nameDetector_;
+  if (!geom.isValid()) edm::LogWarning("HGCalStudies") << "Cannot get valid HGCalGeometry Object for " << nameDetector_;
   const HGCalGeometry* geom0 = geom.product();
 
   int ncluster(0);
@@ -186,4 +186,4 @@ void HGCalLayerClusterStudy::analyze(const edm::Event& iEvent,
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(HGCalLayerClusterStudy);
+DEFINE_FWK_MODULE(HGCalScintLayerClusterStudy);

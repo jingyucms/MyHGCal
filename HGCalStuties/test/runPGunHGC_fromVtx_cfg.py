@@ -6,8 +6,9 @@
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.StandardSequences.Eras import eras
+from myParam_cff import *
 
-process = cms.Process('SIM',eras.Phase2C8_timing_layer_bar)
+process = cms.Process('SIM',eras.Phase2C9_timing_layer_bar)
 
 # import of standard configurations
 process.load('Configuration.StandardSequences.Services_cff')
@@ -15,8 +16,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2023D41Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2023D41_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D46Reco_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D46_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')
@@ -26,7 +27,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(1000)
+    input = cms.untracked.int32(nevt)
 )
 
 # Input source
@@ -53,7 +54,7 @@ process.FEVTDEBUGoutput = cms.OutputModule("PoolOutputModule",
         dataTier = cms.untracked.string('GEN-SIM'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:step1_211_Vtx_pt20.root'),
+    fileName = cms.untracked.string('file:'+filename),
     outputCommands = process.FEVTDEBUGEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -63,7 +64,7 @@ process.FEVTDEBUGoutput = cms.OutputModule("PoolOutputModule",
 # Other statements
 process.genstepfilter.triggerConditions=cms.vstring("generation_step")
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'phase2_realistic_T15', '')
 
 ##process.generator = cms.EDFilter("Pythia8PtGun",
 ##    maxEventsToPrint = cms.untracked.int32(1),
@@ -82,44 +83,15 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
 ##    PythiaParameters = cms.PSet(parameterSets = cms.vstring())       
 ##)
 
-##process.generator = cms.EDProducer("CloseByParticleGunProducer",
-##    PGunParameters = cms.PSet(
-##        PartID = cms.vint32(211),
-##        EnMin = cms.double(1000),
-##        EnMax = cms.double(1000),
-##        RMin = cms.double(109.119980179),
-##        RMax = cms.double(109.119980179),
-##        #RMin = cms.double(53.0643),
-##        #RMax = cms.double(53.0643),
-##        ZMin = cms.double(321.05),
-##        ZMax = cms.double(321.05),
-##        Delta = cms.double(2.5),
-##        Pointing = cms.bool(True),
-##        Overlapping = cms.bool(False),
-##        #MaxEta = cms.double(2.5),
-##        #MinEta = cms.double(2.5),
-##        MaxEta = cms.double(1.8),
-##        MinEta = cms.double(1.8),
-##        MaxPhi = cms.double(3.14159265359),
-##        MinPhi = cms.double(-3.14159265359),
-##    ),
-##    Verbosity = cms.untracked.int32(10),
-##    psethack = cms.string('single gamma random energy'),
-##    AddAntiParticle = cms.bool(True),
-##    firstRun = cms.untracked.uint32(1)
-##)
-
-pT=20.0
-
 process.generator = cms.EDProducer("FlatRandomPtGunProducer",
     PGunParameters = cms.PSet(
-        PartID = cms.vint32(211),
-        MinPhi = cms.double(-3.14159265359),
-        MaxPhi = cms.double(3.14159265359), ## in radians
-        MinEta = cms.double(1.7),
-        MaxEta = cms.double(1.7),
-        MinPt = cms.double(pT), # in GeV
-        MaxPt = cms.double(pT)
+        PartID = cms.vint32(particle[0]),
+        MinPhi = cms.double(phiMin),
+        MaxPhi = cms.double(phiMax), ## in radians
+        MinEta = cms.double(etaMin),
+        MaxEta = cms.double(etaMax),
+        MinPt = cms.double(ptMin), # in GeV
+        MaxPt = cms.double(ptMax)
     ),
     Verbosity = cms.untracked.int32(0), ## set to 1 (or greater)  for printouts
     AddAntiParticle = cms.bool(False),

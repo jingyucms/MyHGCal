@@ -4,43 +4,47 @@ import math
 def etaToR(eta, Z):
     return Z*math.tan(2*math.atan(pow(math.e, -1*eta)))
 
-particle=[22]  # pion
+# To get the variables used in CloseByParticleGunProducer see: https://github.com/cms-sw/cmssw/blob/master/IOMC/ParticleGuns/src/CloseByParticleGunProducer.cc
+
+#fromVtx=True
+fromVtx=False
+
+particle=[211]  # pion
 nparticles=1
-eMin=100.
-eMax=100.
-etaMin=1.6
-etaMax=1.6
+ptMin=20   #used in FlatRandomPtGunProducer
+ptMax=20
+#etaMin=1.6    #used in FlatRandomPtGunProducer
+#etaMax=1.6
+etaMin=2.5    #used in FlatRandomPtGunProducer
+etaMax=2.5
 #phiMin=3.1415926
 #phiMax=3.1415926
-phiMin=0
+phiMin=0     
 phiMax=0
-#phiMin=0
-#phiMax=0
-zMin=410
-zMax=410
-#rMin=etaToR(etaMax, zMin)
-#Max=etaToR(etaMin, zMax)
-rMin=160.
-rMax=160.
-#print rMin, rMax
-#print etaToR(etaMin, 500), etaToR(etaMax, 500)
+eMin=300    # used in CloseByParticleGunProducer
+eMax=300
+#zMin=410     # front face of HGC scint
+#zMax=410    
+#rMin=160         
+#rMax=160
+zMin=300     # ~front of HGC
+zMax=300
+rMin=40
+rMax=60
 #delta=15.0
 #delta=12.5
-#delta=10.0
-delta=7.5
+delta=10.0
+#delta=7.5
 isOverlapping=False
 
-if nparticles>1:
-    if (abs(phiMin)==3.1415926 and abs(phiMax)==3.1415926) or (phiMin==0 and phiMax==0):
-        filename="step1_r"+str(int(rMin))+"_r"+str(int(rMax))+"_e"+str(int(eMin))+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+"_phiPi.root"
-        nevt=1
+nevt=100
+
+#print etaToR(2.5, 300), etaToR(2.2, 300), etaToR(2.7, 300)
+
+if not fromVtx:
+    if nparticles<2:
+        filename="step1_r"+str(rMin).replace(".","p")+"_r"+str(rMax).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+".root"
     else:
-        filename="step1_r"+str(int(rMin))+"_r"+str(int(rMax))+"_e"+str(int(eMin))+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+".root"
-        nevt=1000
+        filename="step1_r"+str(rMin).replace(".","p")+"_r"+str(rMax).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+".root"
 else:
-    if (abs(phiMin)==3.1415926 and abs(phiMax)==3.1415926) or (phiMin==0 and phiMax==0):
-        filename="step1_r"+str(int(rMin))+"_r"+str(int(rMax))+"_e"+str(int(eMin))+"_p"+str(particle[0])+"_phiPi.root"
-        nevt=1
-    else: 
-        filename="step1_r"+str(int(rMin))+"_r"+str(int(rMax))+"_e"+str(int(eMin))+"_p"+str(particle[0])+".root"
-        nevt=1000
+    filename="step1_eta"+str(etaMin).replace(".","p")+"_eta"+str(etaMin).replace(".","p")+"_pt"+str(ptMin).replace(".","p")+"_p"+str(particle[0])+".root"
