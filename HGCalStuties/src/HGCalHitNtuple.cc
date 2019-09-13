@@ -27,6 +27,7 @@
 #include "DataFormats/ForwardDetId/interface/HGCScintillatorDetId.h"
 #include "DataFormats/HGCRecHit/interface/HGCRecHitCollections.h"
 #include "DataFormats/ParticleFlowReco/interface/PFCluster.h"
+#include "DataFormats/ParticleFlowReco/interface/HGCalMultiCluster.h"
 
 #include "SimDataFormats/CaloHit/interface/PCaloHit.h"
 #include "SimDataFormats/CaloHit/interface/PCaloHitContainer.h"
@@ -71,7 +72,11 @@ private:
   template<class T>
   void fill_sim_tree_(int event, std::vector<PCaloHit> const& hits, const T* geom, std::string sensorType);
 
-  void fill_cp_tree_(int event, std::vector<CaloParticle> const& cp, std::map<DetId, const HGCRecHit*> hitmap);
+  void fill_cp_tree_(int event, std::vector<CaloParticle> const& cps, std::map<DetId, const HGCRecHit*> hitmap);
+
+  void fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs);
+
+  void fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs);
 
   void computeThreshold();
 
@@ -97,6 +102,19 @@ private:
     float energy, pt, eta, phi, energy_rec;
   };
 
+  struct LCInfo {
+    LCInfo() {
+      event = 0;
+      x = y = z = eta = phi = 0.;
+      energy = 0.;
+      size = layer = 0;
+    }
+    int event;
+    float x, y, z, eta, phi;
+    double energy;
+    int size, layer;
+  };
+
   // ----------member data ---------------------------
   edm::EDGetTokenT<edm::PCaloHitContainer>  simHitSourceEE_;
   edm::EDGetTokenT<edm::PCaloHitContainer>  simHitSourceHESi_;
@@ -105,6 +123,9 @@ private:
   edm::EDGetToken recHitSourceHESi_;
   edm::EDGetToken recHitSourceHEScint_;
   edm::EDGetTokenT<std::vector<CaloParticle>> caloParticleSource_;
+  edm::EDGetTokenT<std::vector<reco::HGCalMultiCluster>> multiClusterSource_;
+  edm::EDGetToken layerClusterSource_;
+  
   // ----------threshold calculation-----------
   double ecut_;
   std::vector<double> dEdXweights_;
@@ -117,10 +138,13 @@ private:
   
   HitsInfo rechitsInfo, simhitsInfo;
   CPInfo cpInfo;
+  LCInfo lcInfo, lcNoEMInfo;
 
   TTree* RecHitTree;
   TTree* SimHitTree;
   TTree* CPTree;
+  TTree* LCTree;
+  TTree* LCNoEMTree;
 
   hgcal::RecHitTools rhtools_;
 
@@ -149,6 +173,10 @@ HGCalHitNtuple::HGCalHitNtuple(const edm::ParameterSet& iConfig) :
   recHitSourceHEScint_ = consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("sourceHEScint"));
 
   caloParticleSource_ = consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("sourceCaloParticle"));
+
+  layerClusterSource_ = consumes<std::vector<reco::CaloCluster>>(iConfig.getParameter<edm::InputTag>("sourceLayerCluster"));
+
+  multiClusterSource_ = consumes<std::vector<reco::HGCalMultiCluster>>(iConfig.getParameter<edm::InputTag>("sourceMultiCluster"));
 }
 
 void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -176,6 +204,8 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.add<edm::InputTag>("sourceHESi", edm::InputTag("HGCalRecHit", "HGCHEFRecHits"));
   desc.add<edm::InputTag>("sourceHEScint", edm::InputTag("HGCalRecHit", "HGCHEBRecHits"));
   desc.add<edm::InputTag>("sourceCaloParticle", edm::InputTag("mix", "MergedCaloTruth"));
+  desc.add<edm::InputTag>("sourceLayerCluster",edm::InputTag("hgcalLayerClusters",""));
+  desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM"));
   desc.addUntracked<int>("verbosity", 0);
   descriptions.add("hgcalHitNtuple", desc);
 }
@@ -185,10 +215,13 @@ void HGCalHitNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup) {
   RecHitTree = fs->make<TTree>("RecHitTree", "");
   SimHitTree = fs->make<TTree>("SimHitTree", "");
   CPTree = fs->make<TTree>("CPTree", "");
+  LCTree = fs->make<TTree>("LCTree", "");
   
   RecHitTree->Branch("RecHitsInfo", &rechitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
   SimHitTree->Branch("SimHitsInfo", &simhitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
   CPTree->Branch("cpInfo", &cpInfo, "event/I:idx/I:id/I:energy/F:pt/F:eta/F:phi/F:energy_rec/F");
+  LCTree->Branch("lcInfo", &lcInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/D:size/I:layer/I");
+  LCNoEMTree->Branch("lcNoEMInfo", &lcNoEMInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/D:size/I:layer/I");
 }
 
 void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -234,6 +267,12 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
   
   edm::Handle<std::vector<CaloParticle>> handleTheCaloParticle;
   iEvent.getByToken(caloParticleSource_, handleTheCaloParticle);
+
+  edm::Handle<std::vector<reco::CaloCluster> > handleTheLayerClusters;
+  iEvent.getByToken(layerClusterSource_, handleTheLayerClusters);
+
+  edm::Handle<std::vector<reco::HGCalMultiCluster> > handleTheMultiClusters;
+  iEvent.getByToken(multiClusterSource_, handleTheMultiClusters);
   
   edm::ESHandle<HGCalGeometry> geomEE;
   edm::ESHandle<HGCalGeometry> geomHESi;
@@ -256,6 +295,10 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
   fill_rec_tree_(Event, *handleTheRecHitsHEScint, geom0HEScint);
 
   fill_cp_tree_(Event, *handleTheCaloParticle, hitmap);
+
+  fill_lc_tree_(Event, *handleTheLayerClusters);
+
+  fill_lc_ftr_tree_(Event, *handleTheLayerClusters, *handleTheMultiClusters);
 }
 
 template<class T>
@@ -321,7 +364,6 @@ void HGCalHitNtuple::fill_sim_tree_(int event, const std::vector<PCaloHit>& hits
 void HGCalHitNtuple::fill_cp_tree_(int event, const std::vector<CaloParticle>& cps, std::map<DetId, const HGCRecHit*> hitmap) {
   for (unsigned int i = 0; i < cps.size(); ++i) {
     cpInfo.event = event;
-    //std::cout << "-----------CP" << i << "\n";
     const CaloParticle& cp = cps[i];
     cpInfo.idx = i;
     cpInfo.id = cp.pdgId();
@@ -333,13 +375,60 @@ void HGCalHitNtuple::fill_cp_tree_(int event, const std::vector<CaloParticle>& c
     for (auto const sc : cp.simClusters()) {
       for (auto const h_and_f : sc->hits_and_fractions()) {
 	if (hitmap.count(h_and_f.first)) {
-	  //std::cout << hitmap[h_and_f.first]->energy() << " | " << h_and_f.second << "\n";
 	  energy_rec += hitmap[h_and_f.first]->energy() * h_and_f.second;
 	}
       }
     }
     cpInfo.energy_rec = energy_rec;
     CPTree->Fill();
+  }
+}
+
+void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs) {
+  for (unsigned int i = 0; i < lcs.size(); ++i) {
+    const reco::CaloCluster& lc = lcs[i];
+    lcInfo.event = event;
+    lcInfo.x = lc.x();
+    lcInfo.y = lc.y();
+    lcInfo.z = lc.z();
+    lcInfo.eta = lc.eta();
+    lcInfo.phi = lc.phi();
+    lcInfo.energy = lc.energy();
+    const std::vector< std::pair<DetId, float> > & hits = lc.hitsAndFractions();
+    lcInfo.size = hits.size();
+    DetId detId = hits[0].first;
+    lcInfo.layer = rhtools_.getLayerWithOffset(detId);
+    LCTree->Fill();
+  }
+}
+
+void HGCalHitNtuple::fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
+  for (unsigned int i = 0; i < lcs.size(); ++i) {
+    const reco::CaloCluster& lc = lcs[i];
+    uint32_t seed = lc.seed().rawId();
+    bool find = false;
+    for (const auto& mc : mcs) {
+      for (const auto& lc_in_mc : mc) {
+	if (seed == lc_in_mc->seed().rawId()) {
+	  find = true;
+	  break;
+	}
+      }
+    }
+    if (find == true) {
+      lcNoEMInfo.event = event;
+      lcNoEMInfo.x = lc.x();
+      lcNoEMInfo.y = lc.y();
+      lcNoEMInfo.z = lc.z();
+      lcNoEMInfo.eta = lc.eta();
+      lcNoEMInfo.phi = lc.phi();
+      lcNoEMInfo.energy = lc.energy();
+      const std::vector< std::pair<DetId, float> > & hits = lc.hitsAndFractions();
+      lcNoEMInfo.size = hits.size();
+      DetId detId = hits[0].first;
+      lcNoEMInfo.layer = rhtools_.getLayerWithOffset(detId);
+      LCTree->Fill();
+    }
   }
 }
 
