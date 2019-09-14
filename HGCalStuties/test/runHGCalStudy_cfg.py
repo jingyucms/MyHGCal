@@ -4,14 +4,14 @@ from Configuration.StandardSequences.Eras import eras
 from myParam_cff import *
 
 #filename=filename.replace("step1", "step2")
-filename="step3.root"
+filename="step3_200PU.root"
 
 #filename="step2_211_Vtx_pt20.root"
 #filename="step2_r160_r160_e100_p22_testGit.root"
 
-process = cms.Process("runAnalyzer", eras.Phase2C9_timing_layer_bar)
+process = cms.Process("runAnalyzer", eras.Phase2C8_timing_layer_bar)
 
-process.load('Configuration.Geometry.GeometryExtended2026D46Reco_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D41Reco_cff')
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag

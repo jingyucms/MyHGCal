@@ -205,7 +205,7 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.add<edm::InputTag>("sourceHEScint", edm::InputTag("HGCalRecHit", "HGCHEBRecHits"));
   desc.add<edm::InputTag>("sourceCaloParticle", edm::InputTag("mix", "MergedCaloTruth"));
   desc.add<edm::InputTag>("sourceLayerCluster",edm::InputTag("hgcalLayerClusters",""));
-  desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM"));
+  desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM", "MultiClustersFromTracksterByCA"));
   desc.addUntracked<int>("verbosity", 0);
   descriptions.add("hgcalHitNtuple", desc);
 }
@@ -216,6 +216,7 @@ void HGCalHitNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup) {
   SimHitTree = fs->make<TTree>("SimHitTree", "");
   CPTree = fs->make<TTree>("CPTree", "");
   LCTree = fs->make<TTree>("LCTree", "");
+  LCNoEMTree = fs->make<TTree>("LCNoEMTree", "");
   
   RecHitTree->Branch("RecHitsInfo", &rechitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
   SimHitTree->Branch("SimHitsInfo", &simhitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
@@ -403,19 +404,22 @@ void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> con
 }
 
 void HGCalHitNtuple::fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
+  //std::cout << lcs.size() << "\n";
   for (unsigned int i = 0; i < lcs.size(); ++i) {
     const reco::CaloCluster& lc = lcs[i];
     uint32_t seed = lc.seed().rawId();
-    bool find = false;
+    bool mask = false;
+    //std::cout << "mcs: " << mcs.size() << "\n";
     for (const auto& mc : mcs) {
+      //std::cout << "mc: " << mc.size() << "\n";
       for (const auto& lc_in_mc : mc) {
 	if (seed == lc_in_mc->seed().rawId()) {
-	  find = true;
+	  mask = true;
 	  break;
 	}
       }
     }
-    if (find == true) {
+    if (mask == false) {
       lcNoEMInfo.event = event;
       lcNoEMInfo.x = lc.x();
       lcNoEMInfo.y = lc.y();
@@ -427,7 +431,7 @@ void HGCalHitNtuple::fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster>
       lcNoEMInfo.size = hits.size();
       DetId detId = hits[0].first;
       lcNoEMInfo.layer = rhtools_.getLayerWithOffset(detId);
-      LCTree->Fill();
+      LCNoEMTree->Fill();
     }
   }
 }
