@@ -76,7 +76,7 @@ private:
 
   void fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs);
 
-  void fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs);
+  void fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs);
 
   void computeThreshold();
 
@@ -176,7 +176,7 @@ HGCalHitNtuple::HGCalHitNtuple(const edm::ParameterSet& iConfig) :
 
   layerClusterSource_ = consumes<std::vector<reco::CaloCluster>>(iConfig.getParameter<edm::InputTag>("sourceLayerCluster"));
 
-  multiClusterSource_ = consumes<std::vector<reco::HGCalMultiCluster>>(iConfig.getParameter<edm::InputTag>("sourceMultiCluster"));
+  //multiClusterSource_ = consumes<std::vector<reco::HGCalMultiCluster>>(iConfig.getParameter<edm::InputTag>("sourceMultiCluster"));
 }
 
 void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -205,7 +205,7 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.add<edm::InputTag>("sourceHEScint", edm::InputTag("HGCalRecHit", "HGCHEBRecHits"));
   desc.add<edm::InputTag>("sourceCaloParticle", edm::InputTag("mix", "MergedCaloTruth"));
   desc.add<edm::InputTag>("sourceLayerCluster",edm::InputTag("hgcalLayerClusters",""));
-  desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM", "MultiClustersFromTracksterByCA"));
+  //desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM", "MultiClustersFromTracksterByCA"));
   desc.addUntracked<int>("verbosity", 0);
   descriptions.add("hgcalHitNtuple", desc);
 }
@@ -272,8 +272,8 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
   edm::Handle<std::vector<reco::CaloCluster> > handleTheLayerClusters;
   iEvent.getByToken(layerClusterSource_, handleTheLayerClusters);
 
-  edm::Handle<std::vector<reco::HGCalMultiCluster> > handleTheMultiClusters;
-  iEvent.getByToken(multiClusterSource_, handleTheMultiClusters);
+  //edm::Handle<std::vector<reco::HGCalMultiCluster> > handleTheMultiClusters;
+  //iEvent.getByToken(multiClusterSource_, handleTheMultiClusters);
   
   edm::ESHandle<HGCalGeometry> geomEE;
   edm::ESHandle<HGCalGeometry> geomHESi;
@@ -299,7 +299,7 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
   fill_lc_tree_(Event, *handleTheLayerClusters);
 
-  fill_lc_ftr_tree_(Event, *handleTheLayerClusters, *handleTheMultiClusters);
+  //fill_lc_ticl_tree_(Event, *handleTheLayerClusters, *handleTheMultiClusters);
 }
 
 template<class T>
@@ -403,15 +403,12 @@ void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> con
   }
 }
 
-void HGCalHitNtuple::fill_lc_ftr_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
-  //std::cout << lcs.size() << "\n";
+void HGCalHitNtuple::fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
   for (unsigned int i = 0; i < lcs.size(); ++i) {
     const reco::CaloCluster& lc = lcs[i];
     uint32_t seed = lc.seed().rawId();
     bool mask = false;
-    //std::cout << "mcs: " << mcs.size() << "\n";
     for (const auto& mc : mcs) {
-      //std::cout << "mc: " << mc.size() << "\n";
       for (const auto& lc_in_mc : mc) {
 	if (seed == lc_in_mc->seed().rawId()) {
 	  mask = true;

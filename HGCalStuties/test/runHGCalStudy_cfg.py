@@ -3,8 +3,8 @@ from Configuration.StandardSequences.Eras import eras
 
 from myParam_cff import *
 
-#filename=filename.replace("step1", "step2")
-filename="step3_200PU.root"
+filename=filename.replace("step1", "step2")
+#filename="step3_200PU.root"
 
 #filename="step2_211_Vtx_pt20.root"
 #filename="step2_r160_r160_e100_p22_testGit.root"
