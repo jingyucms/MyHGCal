@@ -74,9 +74,9 @@ private:
 
   void fill_cp_tree_(int event, std::vector<CaloParticle> const& cps, std::map<DetId, const HGCRecHit*> hitmap);
 
-  void fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs);
+  void fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::map<DetId, const HGCRecHit*> hitmap);
 
-  void fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs);
+  //void fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs);
 
   void computeThreshold();
 
@@ -85,12 +85,12 @@ private:
       event = 0;
       x = y = z = eta = phi = 0.;
       time = energy = 0;
-      thickness = layer = 0;
+      layer = additional = 0;
     }
     int event;
     float x, y, z, eta, phi;
-    double time, energy;
-    int thickness, layer;
+    float energy, time;
+    int layer, additional;  // additional = thickness, size, and cpidx for rechits, lcs, and hitsInSimClusters respectively
   };
 
   struct CPInfo {
@@ -102,18 +102,18 @@ private:
     float energy, pt, eta, phi, energy_rec;
   };
 
-  struct LCInfo {
-    LCInfo() {
-      event = 0;
-      x = y = z = eta = phi = 0.;
-      energy = 0.;
-      size = layer = 0;
-    }
-    int event;
-    float x, y, z, eta, phi;
-    double energy;
-    int size, layer;
-  };
+//  struct LCInfo {
+//    LCInfo() {
+//      event = 0;
+//      x = y = z = eta = phi = 0.;
+//      time = energy = 0.;
+//      size = layer = 0;
+//    }
+//    int event;
+//    float x, y, z, eta, phi;
+//    double time, energy;
+//    int size, layer;
+//  };
 
   // ----------member data ---------------------------
   edm::EDGetTokenT<edm::PCaloHitContainer>  simHitSourceEE_;
@@ -136,15 +136,16 @@ private:
   double noiseMip_;
   int verbosity_;
   
-  HitsInfo rechitsInfo, simhitsInfo;
+  HitsInfo rechitsInfo, simhitsInfo, lcInfo, simhitsInSimClusterInfo;
   CPInfo cpInfo;
-  LCInfo lcInfo, lcNoEMInfo;
+  //LCInfo lcInfo, lcNoEMInfo;
 
   TTree* RecHitTree;
   TTree* SimHitTree;
-  TTree* CPTree;
   TTree* LCTree;
-  TTree* LCNoEMTree;
+  TTree* SimHitsInSimClusterTree;
+  TTree* CPTree;
+  //TTree* LCNoEMTree;
 
   hgcal::RecHitTools rhtools_;
 
@@ -215,14 +216,16 @@ void HGCalHitNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup) {
   RecHitTree = fs->make<TTree>("RecHitTree", "");
   SimHitTree = fs->make<TTree>("SimHitTree", "");
   CPTree = fs->make<TTree>("CPTree", "");
+  SimHitsInSimClusterTree = fs->make<TTree>("SimHitsInSimClusterTree", "");
   LCTree = fs->make<TTree>("LCTree", "");
-  LCNoEMTree = fs->make<TTree>("LCNoEMTree", "");
+  //LCNoEMTree = fs->make<TTree>("LCNoEMTree", "");
   
-  RecHitTree->Branch("RecHitsInfo", &rechitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
-  SimHitTree->Branch("SimHitsInfo", &simhitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:time/D:energy/D:thickness/I:layer/I");
+  RecHitTree->Branch("RecHitsInfo", &rechitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:thickness/I");
+  SimHitTree->Branch("SimHitsInfo", &simhitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:additional/I");
+  LCTree->Branch("lcInfo", &lcInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:size/I");
+  SimHitsInSimClusterTree->Branch("simhitsInSimClusterInfo", &simhitsInSimClusterInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:cpidx/I");
   CPTree->Branch("cpInfo", &cpInfo, "event/I:idx/I:id/I:energy/F:pt/F:eta/F:phi/F:energy_rec/F");
-  LCTree->Branch("lcInfo", &lcInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/D:size/I:layer/I");
-  LCNoEMTree->Branch("lcNoEMInfo", &lcNoEMInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/D:size/I:layer/I");
+  //LCNoEMTree->Branch("lcNoEMInfo", &lcNoEMInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/D:size/I:layer/I");
 }
 
 void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -297,7 +300,7 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
   fill_cp_tree_(Event, *handleTheCaloParticle, hitmap);
 
-  fill_lc_tree_(Event, *handleTheLayerClusters);
+  fill_lc_tree_(Event, *handleTheLayerClusters, hitmap);
 
   //fill_lc_ticl_tree_(Event, *handleTheLayerClusters, *handleTheMultiClusters);
 }
@@ -321,14 +324,15 @@ void HGCalHitNtuple::fill_rec_tree_(int event, const HGCRecHitCollection& hits, 
     rechitsInfo.event = event;
     rechitsInfo.energy = hit.energy();
     rechitsInfo.time = hit.time();
-    GlobalPoint global = geom->getPosition(detId);
+    //GlobalPoint global = geom->getPosition(detId);
+    GlobalPoint global = rhtools_.getPosition(detId);
     rechitsInfo.x = global.x();
     rechitsInfo.y = global.y();
     rechitsInfo.z = global.z();
     rechitsInfo.eta = global.eta();
     rechitsInfo.phi = global.phi();
-    rechitsInfo.thickness = ithickness;
     rechitsInfo.layer = ilayer+1;
+    rechitsInfo.additional = ithickness;
     RecHitTree->Fill();
   }
 }
@@ -364,28 +368,53 @@ void HGCalHitNtuple::fill_sim_tree_(int event, const std::vector<PCaloHit>& hits
 
 void HGCalHitNtuple::fill_cp_tree_(int event, const std::vector<CaloParticle>& cps, std::map<DetId, const HGCRecHit*> hitmap) {
   for (unsigned int i = 0; i < cps.size(); ++i) {
-    cpInfo.event = event;
     const CaloParticle& cp = cps[i];
-    cpInfo.idx = i;
-    cpInfo.id = cp.pdgId();
-    cpInfo.energy = cp.energy();
-    cpInfo.pt = cp.pt();
-    cpInfo.eta = cp.eta();
-    cpInfo.phi = cp.phi();
-    float energy_rec = 0.;
-    for (auto const sc : cp.simClusters()) {
-      for (auto const h_and_f : sc->hits_and_fractions()) {
-	if (hitmap.count(h_and_f.first)) {
-	  energy_rec += hitmap[h_and_f.first]->energy() * h_and_f.second;
+    if (abs(cp.eta())>1.5 and abs(cp.eta())<3.0) {
+      cpInfo.event = event;
+      cpInfo.idx = i;
+      cpInfo.id = cp.pdgId();
+      cpInfo.energy = cp.energy();
+      cpInfo.pt = cp.pt();
+      cpInfo.eta = cp.eta();
+      cpInfo.phi = cp.phi();
+      float energy_rec = 0.;
+      for (auto const sc : cp.simClusters()) {
+	for (auto const h_and_f : sc->hits_and_fractions()) {
+	  if (hitmap.count(h_and_f.first)) {
+	    energy_rec += hitmap[h_and_f.first]->energy() * h_and_f.second;
+	  }
+	}
+      }
+      cpInfo.energy_rec = energy_rec;
+      CPTree->Fill();
+      if (abs(cp.pdgId())==211 and cp.pt()>4 and cp.energy()>15) {
+	for (auto const sc : cp.simClusters()) {
+	  for (auto const hit: sc->hits_and_fractions()) {
+	    DetId detId = hit.first;
+	    int ilayer = rhtools_.getLayerWithOffset(detId)-1;
+	    simhitsInSimClusterInfo.event = event;
+	    simhitsInSimClusterInfo.layer = ilayer+1;
+	    simhitsInSimClusterInfo.additional = i;
+	    if (hitmap.count(detId)) {
+	      simhitsInSimClusterInfo.energy = hitmap[detId]->energy() * hit.second;
+	      simhitsInSimClusterInfo.time = hitmap[detId]->time();
+	      GlobalPoint global = rhtools_.getPosition(detId);
+	      //GlobalPoint global = geom->getPosition(detId);
+	      simhitsInSimClusterInfo.x = global.x();
+	      simhitsInSimClusterInfo.y = global.y();
+	      simhitsInSimClusterInfo.z = global.z();
+	      simhitsInSimClusterInfo.eta = global.eta();
+	      simhitsInSimClusterInfo.phi = global.phi();	    
+	      SimHitsInSimClusterTree->Fill();
+	    }
+	  }
 	}
       }
     }
-    cpInfo.energy_rec = energy_rec;
-    CPTree->Fill();
   }
 }
 
-void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs) {
+void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::map<DetId, const HGCRecHit*> hitmap) {
   for (unsigned int i = 0; i < lcs.size(); ++i) {
     const reco::CaloCluster& lc = lcs[i];
     lcInfo.event = event;
@@ -396,42 +425,47 @@ void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> con
     lcInfo.phi = lc.phi();
     lcInfo.energy = lc.energy();
     const std::vector< std::pair<DetId, float> > & hits = lc.hitsAndFractions();
-    lcInfo.size = hits.size();
     DetId detId = hits[0].first;
     lcInfo.layer = rhtools_.getLayerWithOffset(detId);
+    lcInfo.additional = hits.size();
+    float time_tot = 0;
+    for (auto const hit : hits) {
+      time_tot += hitmap[hit.first]->time();
+    }
+    lcInfo.time = time_tot/hits.size();
     LCTree->Fill();
   }
 }
 
-void HGCalHitNtuple::fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
-  for (unsigned int i = 0; i < lcs.size(); ++i) {
-    const reco::CaloCluster& lc = lcs[i];
-    uint32_t seed = lc.seed().rawId();
-    bool mask = false;
-    for (const auto& mc : mcs) {
-      for (const auto& lc_in_mc : mc) {
-	if (seed == lc_in_mc->seed().rawId()) {
-	  mask = true;
-	  break;
-	}
-      }
-    }
-    if (mask == false) {
-      lcNoEMInfo.event = event;
-      lcNoEMInfo.x = lc.x();
-      lcNoEMInfo.y = lc.y();
-      lcNoEMInfo.z = lc.z();
-      lcNoEMInfo.eta = lc.eta();
-      lcNoEMInfo.phi = lc.phi();
-      lcNoEMInfo.energy = lc.energy();
-      const std::vector< std::pair<DetId, float> > & hits = lc.hitsAndFractions();
-      lcNoEMInfo.size = hits.size();
-      DetId detId = hits[0].first;
-      lcNoEMInfo.layer = rhtools_.getLayerWithOffset(detId);
-      LCNoEMTree->Fill();
-    }
-  }
-}
+//void HGCalHitNtuple::fill_lc_ticl_tree_(int event, std::vector<reco::CaloCluster> const& lcs, std::vector<reco::HGCalMultiCluster> const& mcs) {
+//  for (unsigned int i = 0; i < lcs.size(); ++i) {
+//    const reco::CaloCluster& lc = lcs[i];
+//    uint32_t seed = lc.seed().rawId();
+//    bool mask = false;
+//    for (const auto& mc : mcs) {
+//      for (const auto& lc_in_mc : mc) {
+//	if (seed == lc_in_mc->seed().rawId()) {
+//	  mask = true;
+//	  break;
+//	}
+//      }
+//    }
+//    if (mask == false) {
+//      lcNoEMInfo.event = event;
+//      lcNoEMInfo.x = lc.x();
+//      lcNoEMInfo.y = lc.y();
+//      lcNoEMInfo.z = lc.z();
+//      lcNoEMInfo.eta = lc.eta();
+//      lcNoEMInfo.phi = lc.phi();
+//      lcNoEMInfo.energy = lc.energy();
+//      const std::vector< std::pair<DetId, float> > & hits = lc.hitsAndFractions();
+//      lcNoEMInfo.size = hits.size();
+//      DetId detId = hits[0].first;
+//      lcNoEMInfo.layer = rhtools_.getLayerWithOffset(detId);
+//      LCNoEMTree->Fill();
+//    }
+//  }
+//}
 
 void HGCalHitNtuple::computeThreshold() {
 

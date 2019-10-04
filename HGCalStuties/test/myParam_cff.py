@@ -6,11 +6,11 @@ def etaToR(eta, Z):
 
 # To get the variables used in CloseByParticleGunProducer see: https://github.com/cms-sw/cmssw/blob/master/IOMC/ParticleGuns/src/CloseByParticleGunProducer.cc
 
-#fromVtx=True
-fromVtx=False
+fromVtx=True
+#fromVtx=False
 
-#isD41=True
-isD41=False
+isD41=True
+#isD41=False
 
 particle=[211]  # pion
 nparticles=2
