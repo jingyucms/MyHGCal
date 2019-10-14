@@ -12,8 +12,11 @@ fromVtx=True
 isD41=True
 #isD41=False
 
-particle=[211]  # pion
-nparticles=2
+nevt=1
+
+particle=[211, 22]  # pion
+#particle=[211]
+nparticles=3
 ptMin=20   #used in FlatRandomPtGunProducer
 ptMax=20
 #etaMin=1.6    #used in FlatRandomPtGunProducer
@@ -25,12 +28,12 @@ etaMax=2.5
 phiMin=0     
 phiMax=0
 #eMin=eMax=300    # used in CloseByParticleGunProducer
-eMin=eMax=20
+eMin=eMax=100
 #zMin=410     # front face of HGC scint
 #zMax=410    
 #rMin=160         
 #rMax=160
-zMin=zMax=300     # ~front of HGC
+zMin=zMax=100     # ~front of HGC
 #rMin=40
 #rMax=60
 rMin=rMax=50
@@ -38,9 +41,7 @@ rMin=rMax=50
 #delta=12.5
 delta=10.0
 #delta=7.5
-isOverlapping=False
-
-nevt=100
+isOverlapping=True
 
 print etaToR(2.5, 300), etaToR(2.2, 300), etaToR(2.7, 300)
 
@@ -50,7 +51,10 @@ if not fromVtx:
         if isD41:
             filename = filename.replace(".root","_D41PU200.root")
     else:
-        filename="step1_r"+str(rMin).replace(".","p")+"_r"+str(rMax).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+".root"
+        if len(set(particle))>1:
+            filename="step1_r"+str(rMin).replace(".","p")+"_r"+str(rMax).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_pMix"+"_delta"+str(delta).replace(".","p")+".root"
+        else:
+            filename="step1_r"+str(rMin).replace(".","p")+"_r"+str(rMax).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+".root"
 else:
     filename="step1_eta"+str(etaMin).replace(".","p")+"_eta"+str(etaMin).replace(".","p")+"_pt"+str(ptMin).replace(".","p")+"_p"+str(particle[0])+".root"
     if isD41:
