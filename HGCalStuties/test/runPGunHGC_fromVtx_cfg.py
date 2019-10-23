@@ -94,7 +94,7 @@ process.generator = cms.EDProducer("FlatRandomPtGunProducer",
         MaxPt = cms.double(ptMax)
     ),
     Verbosity = cms.untracked.int32(0), ## set to 1 (or greater)  for printouts
-    AddAntiParticle = cms.bool(False),
+    AddAntiParticle = cms.bool(True),
 )
 
 from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
