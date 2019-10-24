@@ -387,7 +387,7 @@ void HGCalHitNtuple::fill_cp_tree_(int event, const std::vector<CaloParticle>& c
       }
       cpInfo.energy_rec = energy_rec;
       CPTree->Fill();
-      if (cp.pt()>3 or cp.energy()>10) {
+      if (cp.pt()>3) {
 	int scidx(0);
 	for (auto const sc : cp.simClusters()) {
 	  for (auto const hit: sc->hits_and_fractions()) {
