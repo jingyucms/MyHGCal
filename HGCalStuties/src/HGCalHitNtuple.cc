@@ -137,11 +137,12 @@ private:
   double noiseMip_;
   int verbosity_;
   
-  HitsInfo rechitsInfo, simhitsInfo, lcInfo, simhitsInSimClusterInfo;
+  HitsInfo rechitsInfo, rechitsSignalRegionInfo, simhitsInfo, lcInfo, simhitsInSimClusterInfo;
   CPInfo cpInfo;
   //LCInfo lcInfo, lcNoEMInfo;
 
   TTree* RecHitTree;
+  TTree* RecHitSignalRegionTree;
   TTree* SimHitTree;
   TTree* LCTree;
   TTree* SimHitsInSimClusterTree;
@@ -215,6 +216,7 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
 void HGCalHitNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup) {		
   edm::Service<TFileService> fs;
   RecHitTree = fs->make<TTree>("RecHitTree", "");
+  RecHitSignalRegionTree = fs->make<TTree>("RecHitSignalRegionTree", "");
   SimHitTree = fs->make<TTree>("SimHitTree", "");
   CPTree = fs->make<TTree>("CPTree", "");
   SimHitsInSimClusterTree = fs->make<TTree>("SimHitsInSimClusterTree", "");
@@ -222,6 +224,7 @@ void HGCalHitNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup) {
   //LCNoEMTree = fs->make<TTree>("LCNoEMTree", "");
   
   RecHitTree->Branch("RecHitsInfo", &rechitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:thickness/I:dummy/I");
+  RecHitSignalRegionTree->Branch("RecHitsSignalRegionInfo", &rechitsSignalRegionInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:thickness/I:dummy/I");
   SimHitTree->Branch("SimHitsInfo", &simhitsInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:additional/I:dummy/I");
   LCTree->Branch("lcInfo", &lcInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:size/I:dummy/I");
   SimHitsInSimClusterTree->Branch("simhitsInSimClusterInfo", &simhitsInSimClusterInfo, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:cpidx/I:scidx/I");
@@ -334,6 +337,21 @@ void HGCalHitNtuple::fill_rec_tree_(int event, const HGCRecHitCollection& hits) 
     rechitsInfo.layer = ilayer+1;
     rechitsInfo.additional1 = ithickness;
     RecHitTree->Fill();
+    if (2.2<global.eta() && global.eta()<2.8 && global.phi()<0.3 && -0.3<global.phi()) {
+      rechitsSignalRegionInfo.event = event;
+      rechitsSignalRegionInfo.energy = hit.energy();
+      rechitsSignalRegionInfo.time = hit.time();
+      //GlobalPoint global = geom->getPosition(detId);
+      //GlobalPoint global = rhtools_.getPosition(detId);
+      rechitsSignalRegionInfo.x = global.x();
+      rechitsSignalRegionInfo.y = global.y();
+      rechitsSignalRegionInfo.z = global.z();
+      rechitsSignalRegionInfo.eta = global.eta();
+      rechitsSignalRegionInfo.phi = global.phi();
+      rechitsSignalRegionInfo.layer = ilayer+1;
+      rechitsSignalRegionInfo.additional1 = ithickness;
+      RecHitSignalRegionTree->Fill();
+    }
   }
 }
 

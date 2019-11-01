@@ -12,11 +12,13 @@ fromVtx=True
 isD41=True
 #isD41=False
 
-nevt=10
+nevt=100
 
-particle=[211, 22]  # pion
-#particle=[211]
+#particle=[211, 22]  # pion
+particle=[211]
 nparticles=1
+#ptMin=5
+#ptMax=10
 ptMin=10   #used in FlatRandomPtGunProducer
 ptMax=20
 #etaMin=1.6    #used in FlatRandomPtGunProducer
@@ -33,7 +35,7 @@ eMin=eMax=100
 #zMax=410    
 #rMin=160         
 #rMax=160
-zMin=zMax=100     # ~front of HGC
+zMin=zMax=300     # ~front of HGC
 #rMin=40
 #rMax=60
 rMin=rMax=50
@@ -58,4 +60,4 @@ if not fromVtx:
 else:
     filename="step1_eta"+str(etaMin).replace(".","p")+"_eta"+str(etaMin).replace(".","p")+"_pt"+str(ptMin).replace(".","p")+"_pt"+str(ptMax).replace(".","p")+"_p"+str(particle[0])+".root"
     if isD41:
-        filename = filename.replace(".root","_D41PU200.root")
+        filename = filename.replace(".root","_PU200_"+str(nevt)+".root")
