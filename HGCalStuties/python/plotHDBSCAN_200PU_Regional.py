@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import matplotlib.axes as axs
 #from mpl_toolkits.mplot3d import Axes3D
+import networkx as nx
 
 events = np.linspace(1,100,100)
 
@@ -72,7 +73,6 @@ SCs = np.asarray([[scs.GetLeaf("event").GetValue(),
 
 isRecHits=True
 isAllLC=True
-whichLabel=5
 whichSide='positive' ### Don't change this
 
 if isRecHits:
@@ -113,11 +113,12 @@ for event in events:
         RH=rechits_in_event[mask]
         outfilename="out_hdbscan_200PU_pt10_pt20_allRecHits_"+whichSide+"_evt"+str(int(event))+"_v3.npz"
         data = np.load(outfilename, allow_pickle=True)
-        Labels=data['Labels'+str(whichLabel)]
-        #if len(set(Labels))<10:
-        #    Labels=data['Labels'+str(whichLabel+1)]
+        Labels=data['Labels_Alt']
+        
         labels=Labels
         sample=RH
+        g=data['Graph']
+        d=data['Dendrogram']
     else:
         lcs_in_event=LCs[LCs[:,0]==event]
         if isAllLC:
@@ -128,10 +129,7 @@ for event in events:
             outfilename="out_hdbscan_200PU_pt10_pt20_nonMipLCs_evt"+str(int(event))+"_"+whichSide+"_v3.npz"
         LC=lcs_in_event[lcmask]
         data = np.load(outfilename, allow_pickle=True)
-        if whichLabel==0:
-            Labels=data['Labels']
-        else:
-            Labels=data['Labels'+str(whichLabel)]
+        Labels=data['Labels']
         labels=Labels
         sample=LC
         
@@ -169,8 +167,6 @@ for event in events:
             sc_phi_masked=sc[sc_phi_mask]
             sc_eta=np.mean(sc_phi_masked[:,5])
             sc_phi=calc_mean_phi(sc_phi_masked[:,6])
-            
-           
             
             distances=[]
             for cl in cluster_labels:
@@ -215,11 +211,11 @@ plt.hist(responses, bins, histtype='step')
 plt.hist(responses_rec, bins, histtype='step', fill=False)
 plt.xlim(0,2)
 if isRecHits:
-    saveName="response_recHits_200PU_v3_"+str(whichLabel)+".pdf"
+    saveName="response_recHits_200PU_v3.pdf"
 else:
     if isAllLC:
-        saveName="response_lcs_200PU_v3_"+str(whichLabel)+".pdf"
+        saveName="response_lcs_200PU_v3.pdf"
     else:
-        saveName="response_nonMipLCs_200PU_v3_"+str(whichLabel)+".pdf"
+        saveName="response_nonMipLCs_200PU_v3.pdf"
 plt.savefig(saveName)
 presponse.clear()

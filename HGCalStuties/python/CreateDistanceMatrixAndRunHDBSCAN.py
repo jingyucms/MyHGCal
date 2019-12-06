@@ -77,13 +77,29 @@ for event in range(1, 101):
             y=LC[j]
             matrix[i][j]=distanceMatrices(x, y)
 
-    db1 = hdbscan.HDBSCAN(min_samples=5, min_cluster_size=10, metric='precomputed').fit(matrix.astype(np.float64))
-    labels1 = db1.labels_
-    probabilities1 = db1.probabilities_
+    clusterer = hdbscan.HDBSCAN(min_samples=5, min_cluster_size=10, metric='precomputed').fit(matrix.astype(np.float64))
+    labels = clusterer.labels_
+    probabilities = clusterer.probabilities_
 
-    db2 = hdbscan.HDBSCAN(cluster_selection_method='leaf', min_samples=5, min_cluster_size=10, metric='precomputed').fit(matrix.astype(np.float64))
-    labels2 = db2.labels_
-    probabilities2 = db2.probabilities_
+    nw=clusterer.condensed_tree_.to_networkx()
+    g=[]
+    for e in nw.edges:
+        edge=[e[0], e[1], nw.get_edge_data(*e)['weight']]
+        edge=np.array(edge)
+        g+=[edge]
+        
+    g=np.array(g)
+    
+    d=clusterer.condensed_tree_.to_numpy()
+    d=[list(i) for i in d]
+    d=np.array(d)
+
+    i=0
+    clMap=[]
+    for l in labels:
+        clMap+=[[i, l]]
+        i+=1
+    clMap=np.array(clMap)
 
     if isAllLC:
         outfilename="out_hdbscan_200PU_pt10_pt20_evt"+str(int(event))+"_"+whichSide+"_v3.npz"
@@ -91,7 +107,8 @@ for event in range(1, 101):
         outfilename="out_hdbscan_200PU_pt10_pt20_nonMipLCs_evt"+str(int(event))+"_"+whichSide+"_v3.npz"
 
     np.savez(outfilename,
-             Labels1=labels1,
-             Probabilities1=probabilities1,
-             Labels2=labels2,
-             Probabilities2=probabilities2)
+             Labels=labels,
+             Probabilities=probabilities,
+             Graph=g,
+             Dendrogram=d,
+             CLMap=clMap)

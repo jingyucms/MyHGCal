@@ -33,6 +33,8 @@ process.load('MyHGCal.HGCalStuties.hgcalRecHitStudyHEScintillator_cfi')
 ## HGCal scintillator layer cluster study
 process.load('MyHGCal.HGCalStuties.hgcalLayerClusterStudyHESintillator_cfi')
 
+#filename="step2_eta2p5_eta2p5_pt10_pt20_p211_100.root"
+
 ## HGCal Ntuple
 #process.load("RecoLocalCalo.Configuration.hgcalLocalReco_cff")
 #from RecoLocalCalo.HGCalRecProducers.HGCalUncalibRecHit_cfi import *
@@ -57,7 +59,6 @@ process.hgcalHitNtuple.dEdXweights = cms.vdouble(
             86.92952
         )
 
-
 process.source = cms.Source("PoolSource",
                             fileNames = cms.untracked.vstring("file:"+filename)
                             #skipEvents=cms.untracked.uint32(1)
@@ -65,7 +66,7 @@ process.source = cms.Source("PoolSource",
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
 )
-    
+
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string("h_"+filename),
                                    closeFileFast = cms.untracked.bool(True)
@@ -84,4 +85,3 @@ process.schedule = cms.Schedule(process.hgcalRawToDigis_step,
                                 process.rechit_analysis,
                                 process.layercluster_scint_analysis,
                                 process.hgcal_rechit_ntuple)
-                                

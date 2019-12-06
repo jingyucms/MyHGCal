@@ -460,7 +460,8 @@ void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> con
     }
     if (hits_tot!=0)
       lcInfo.time = time_tot/hits_tot;
-    LCTree->Fill();
+    //lcInfo.time = lc.time();
+    //LCTree->Fill();
   }
 }
 
