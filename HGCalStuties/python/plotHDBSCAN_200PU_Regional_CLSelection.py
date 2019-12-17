@@ -94,7 +94,7 @@ if __name__ == "__main__":
             rechits_in_event=RHs[RHs[:,0]==event]
             mask = (rechits_in_event[:, 3]>0) & (2.2<rechits_in_event[:,5]) & (rechits_in_event[:,5]<2.8) & (-0.3<rechits_in_event[:,6]) & (rechits_in_event[:,6]<0.3)
             RH=rechits_in_event[mask]
-            outfilename="out_hdbscan_200PU_pt10_pt20_allRecHits_"+whichSide+"_evt"+str(int(event))+"_v3.npz"
+            outfilename="out_hdbscan_200PU_pt10_pt20_allRecHits_"+whichSide+"_evt"+str(int(event))+"_v4.npz"
             print(outfilename)
             data = np.load(outfilename, allow_pickle=True)
             sample=RH
@@ -105,15 +105,12 @@ if __name__ == "__main__":
             D[:,-1]=-1
             cells=D[D[:,3]==1]
             clusters=D[D[:,3]!=1]
-            #print(clusters)
             mothers_idx = clusters[:,0]
             daughters_idx = clusters[:,1]
-            #print(mothers_idx)
-            #print(daughters_idx)
-            cl_stability_descendants = calc_stability_dlambda(cells, clusters, mothers_idx, daughters_idx)
+            #cl_stability_descendants = calc_stability_dlambda(cells, clusters, mothers_idx, daughters_idx)
+            cl_stability_descendants = calc_stability(cells, clusters, mothers_idx, daughters_idx)
             leaf_clusters = select_leaf_clusters(cl_stability_descendants, daughters_idx)
             eom_clusters = select_eom_clusters(cl_stability_descendants, daughters_idx)
-            #eom_clusters = select_eom_clusters(cl_stability_descendants, cells[:,0])
             leaf_labels = assign_cluster_labels(leaf_clusters, cells)
             eom_labels = assign_cluster_labels(eom_clusters, cells)
             labels_leaf = leaf_labels[:, 4]

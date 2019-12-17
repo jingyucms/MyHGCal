@@ -14,7 +14,8 @@ def distanceMatrices(x, y, isLC):
     if isLC:
         w=math.sqrt(x[7])
     else:
-        w=1+x[4]
+        #w=1+x[4]
+        w=1
 
     if dl>=10:
         distance = 9999
@@ -68,11 +69,11 @@ else:
 
 #print("Size of the layer cluster collection:",len(L))
 
-#for event in range(19, 26):
-#for event in range(41, 51):
-#for event in range(63, 76):
-#for event in range(87, 101):
-for event in [75, 100]:
+#for event in range(1, 26):
+#for event in range(26, 51):
+#for event in range(51, 76):
+for event in range(76, 101):
+#for event in [75, 100]:
 
     print("Starting to Process Event:", event)
 
@@ -104,9 +105,9 @@ for event in [75, 100]:
     saveDir='root://cmseos.fnal.gov//eos/uscms/store/user/zhangj/HGC/HDBSCAN/'
     
     if isLCs:
-        saveName='distance_matrix_hdbscan_allLCs_'+whichSide+'_evt'+str(int(event))+'_v3.npy'
+        saveName='distance_matrix_hdbscan_allLCs_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
     else:
-        saveName='distance_matrix_hdbscan_allRecHits_'+whichSide+'_evt'+str(int(event))+'_v3.npy'
+        saveName='distance_matrix_hdbscan_allRecHits_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
 
     print("Output Transfer To:", saveDir+saveName)
     np.save(saveName, matrix)
