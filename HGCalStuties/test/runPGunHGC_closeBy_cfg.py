@@ -103,7 +103,7 @@ process.generator = cms.EDProducer("CloseByParticleGunProducer",
 
 from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
 randHelper = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
-randHelper.resetSeeds(25)
+randHelper.resetSeeds(99)
 
 
 process.ProductionFilterSequence = cms.Sequence(process.generator)

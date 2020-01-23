@@ -70,7 +70,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
         dataTier = cms.untracked.string('GEN-SIM-DIGI-RAW'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:'+filename.replace("step1","step2")),
+    fileName = cms.untracked.string('file:root://cmseos.fnal.gov//eos/uscms/store/user/zhangj/HGC/HDBSCAN/'+filename.replace("step1","step2")),
     outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -156,3 +156,7 @@ process = customiseEarlyDelete(process)
 ##        '*'
 ##    )
 ##)
+
+from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
+randHelper = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
+randHelper.resetSeeds(zMin*rMin)

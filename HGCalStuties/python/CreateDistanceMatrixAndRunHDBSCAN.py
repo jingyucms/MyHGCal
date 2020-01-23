@@ -32,7 +32,7 @@ def distanceMatrices(x, y):
 
 inputFileDir="/uscms_data/d3/jingyu/HGC/3DClustering/CMSSW_11_0_0_pre6/src/MyHGCal/HGCalStuties/test/"
 
-inputFileName="h_step2_eta2p5_eta2p5_pt10_pt20_p211_PU200_100.root"
+inputFileName="h_step2_r100_z320_e300_p211_PU200_100.root"
 
 inputFile=inputFileDir+inputFileName
 
@@ -40,6 +40,9 @@ fil=ROOT.TFile(inputFile)
 
 lcTree=fil.Get("hgcalHitNtuple/LCTree")
 lcInfo=lcTree.GetBranch("lcInfo")
+
+cpTree=fil.Get("hgcalHitNtuple/CPTree")
+cps=cpTree.GetBranch("cpInfo")
 
 whichSide='positive'
 isAllLC=True
@@ -54,14 +57,39 @@ LCs = np.asarray([[lcInfo.GetLeaf("event").GetValue(),
                    lcInfo.GetLeaf("size").GetValue(),
                    lcInfo.GetLeaf("layer").GetValue()] for lc in lcTree])
 
+CPs = np.asarray([[cps.GetLeaf("event").GetValue(),
+                   cps.GetLeaf("idx").GetValue(),
+                   cps.GetLeaf("energy").GetValue(),
+                   cps.GetLeaf("energy_rec").GetValue(),
+                   cps.GetLeaf("eta").GetValue(),
+                   cps.GetLeaf("phi").GetValue(),
+                   cps.GetLeaf("id").GetValue(),
+                   cps.GetLeaf("pt").GetValue()] for cps in cpTree])
+
 for event in range(1, 101):
 
     print("Starting to Process Event:", event)
     
     lcs_in_event=LCs[LCs[:,0]==event]
+    cps_in_event=CPs[CPs[:,0]==event]
+
+    signal_cp1 = cps_in_event[0]
+    signal_cp2 = cps_in_event[1]
+
+    if signal_cp1[4]>0:
+        signal_cp = signal_cp1
+    else:
+        signal_cp = signal_cp2
+
+    cp_eta = signal_cp[4]
+    cp_phi = signal_cp[5]
+
+    #print(cp_eta, cp_phi)
+
+    #continue
 
     if isAllLC:
-        lcmask = (lcs_in_event[:, 3]>0) & (2.2<lcs_in_event[:,5]) & (lcs_in_event[:,5]<2.8) & (-0.5<lcs_in_event[:,6]) & (lcs_in_event[:,6]<0.5)
+        lcmask = (lcs_in_event[:, 3]>0) & (cp_eta-0.3<lcs_in_event[:,5]) & (lcs_in_event[:,5]<cp_eta+0.3) & (cp_phi-0.3<lcs_in_event[:,6]) & (lcs_in_event[:,6]<cp_phi+0.3)
     else:
         lcmask = (lcs_in_event[:, 3]>0) & (lcs_in_event[:, 7]>=2) & (2.2<lcs_in_event[:,5]) & (lcs_in_event[:,5]<2.8) & (-0.5<lcs_in_event[:,6]) & (lcs_in_event[:,6]<0.5)
     LC=lcs_in_event[lcmask]
@@ -102,7 +130,7 @@ for event in range(1, 101):
     clMap=np.array(clMap)
 
     if isAllLC:
-        outfilename="out_hdbscan_200PU_pt10_pt20_evt"+str(int(event))+"_"+whichSide+"_v3.npz"
+        outfilename=inputFileName.replace('100.root','').replace('h_step2','out_hdbscan_allLCs')+"evt"+str(int(event))+"_v4.npz"
     else:
         outfilename="out_hdbscan_200PU_pt10_pt20_nonMipLCs_evt"+str(int(event))+"_"+whichSide+"_v3.npz"
 

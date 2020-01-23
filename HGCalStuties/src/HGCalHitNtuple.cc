@@ -79,6 +79,8 @@ private:
 
   void computeThreshold();
 
+  void computeRegionBoundary(std::vector<CaloParticle> const& cps);
+
   struct HitsInfo {
     HitsInfo() {
       event = 0;
@@ -155,6 +157,8 @@ private:
 
   std::vector<std::vector<double>> thresholds_;
   std::vector<std::vector<double>> v_sigmaNoise_;
+
+  double regionEtaMin_, regionEtaMax_, regionPhiMin_, regionPhiMax_;
 };
 
 HGCalHitNtuple::HGCalHitNtuple(const edm::ParameterSet& iConfig) :
@@ -297,7 +301,9 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
   fill_sim_tree_(Event, *handleTheSimHitsEE, geom0EE, "Hexagon");
   fill_sim_tree_(Event, *handleTheSimHitsHESi, geom0HESi, "Hexagon");
   fill_sim_tree_(Event, *handleTheSimHitsHEScint, geom0HEScint, "Trapezoid");
-  
+
+  computeRegionBoundary(*handleTheCaloParticle);
+  //std::cout << "Debug2: " << regionEtaMin_ << " | " << regionEtaMax_ << " | " << regionPhiMin_ << " | " << regionPhiMax_ << "\n";
   fill_rec_tree_(Event, *handleTheRecHitsEE);
   fill_rec_tree_(Event, *handleTheRecHitsHESi);
   fill_rec_tree_(Event, *handleTheRecHitsHEScint);
@@ -337,7 +343,10 @@ void HGCalHitNtuple::fill_rec_tree_(int event, const HGCRecHitCollection& hits) 
     rechitsInfo.layer = ilayer+1;
     rechitsInfo.additional1 = ithickness;
     RecHitTree->Fill();
-    if (2.2<global.eta() && global.eta()<2.8 && global.phi()<0.3 && -0.3<global.phi()) {
+    if (regionEtaMin_ < global.eta() &&
+	global.eta() < regionEtaMax_ &&
+	regionPhiMin_ < global.phi() &&
+	global.phi() < regionPhiMax_) {
       rechitsSignalRegionInfo.event = event;
       rechitsSignalRegionInfo.energy = hit.energy();
       rechitsSignalRegionInfo.time = hit.time();
@@ -405,7 +414,7 @@ void HGCalHitNtuple::fill_cp_tree_(int event, const std::vector<CaloParticle>& c
       }
       cpInfo.energy_rec = energy_rec;
       CPTree->Fill();
-      if (cp.pt()>3) {
+      if (cp.pt()>1) {
 	int scidx(0);
 	for (auto const sc : cp.simClusters()) {
 	  for (auto const hit: sc->hits_and_fractions()) {
@@ -461,7 +470,7 @@ void HGCalHitNtuple::fill_lc_tree_(int event, std::vector<reco::CaloCluster> con
     if (hits_tot!=0)
       lcInfo.time = time_tot/hits_tot;
     //lcInfo.time = lc.time();
-    //LCTree->Fill();
+    LCTree->Fill();
   }
 }
 
@@ -514,6 +523,16 @@ void HGCalHitNtuple::computeThreshold() {
     thresholds_[ilayer - 1][maxNumberOfThickIndices] = ecut_ * scintillators_sigmaNoise;
     v_sigmaNoise_[ilayer - 1][maxNumberOfThickIndices] = scintillators_sigmaNoise;
   }
+}
+
+void HGCalHitNtuple::computeRegionBoundary(std::vector<CaloParticle> const& cps) {
+  const CaloParticle& cp = cps[0];
+  //std::cout << cp.eta() << " | " << cp.phi() << " | " << cp.energy() << "\n";
+  regionEtaMin_ = cp.eta()-0.3;
+  regionEtaMax_ = cp.eta()+0.3;
+  regionPhiMin_ = cp.phi()-0.3;
+  regionPhiMax_ = cp.phi()+0.3;
+  //std::cout << "Debug1: " << regionEtaMin_ << " | " << regionEtaMax_ << " | " << regionPhiMin_ << " | " << regionPhiMax_ << "\n";
 }
 
 #include "FWCore/Framework/interface/MakerMacros.h"

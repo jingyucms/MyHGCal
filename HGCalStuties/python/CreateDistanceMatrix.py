@@ -32,7 +32,8 @@ isLCs=False
 whichSide='positive'
 
 inputFileDir='../test/'
-inputFileName="h_step2_eta2p5_eta2p5_pt10_pt20_p211_PU200_100.root"
+#inputFileName="h_step2_eta2p5_eta2p5_pt10_pt20_p211_PU200_100.root"
+inputFileName="h_step2_r50_z320_e300_p211_PU200_100.root"
 inputFile=inputFileDir+inputFileName
 
 fil=ROOT.TFile(inputFile)
@@ -72,8 +73,9 @@ else:
 #for event in range(1, 26):
 #for event in range(26, 51):
 #for event in range(51, 76):
-for event in range(76, 101):
-#for event in [75, 100]:
+#for event in range(76, 101):
+#for event in range(1, 51):
+for event in range(51, 101):
 
     print("Starting to Process Event:", event)
 
@@ -84,9 +86,9 @@ for event in range(76, 101):
         X=L
     else:
         rechits_in_event=RHs[RHs[:,0]==event]
-        mask = (rechits_in_event[:, 3]>0) & (2.2<rechits_in_event[:,5]) & (rechits_in_event[:,5]<2.8) & (-0.3<rechits_in_event[:,6]) & (rechits_in_event[:,6]<0.3)
-        R=rechits_in_event[mask]
-        X=R
+        #mask = (rechits_in_event[:, 3]>0) & (2.2<rechits_in_event[:,5]) & (rechits_in_event[:,5]<2.8) & (-0.3<rechits_in_event[:,6]) & (rechits_in_event[:,6]<0.3)
+        #R=rechits_in_event[mask]
+        X=rechits_in_event
 
     n=len(X)
     print("Number of Inputs:", n)
@@ -107,7 +109,8 @@ for event in range(76, 101):
     if isLCs:
         saveName='distance_matrix_hdbscan_allLCs_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
     else:
-        saveName='distance_matrix_hdbscan_allRecHits_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
+        #saveName='distance_matrix_hdbscan_allRecHits_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
+        saveName = inputFileName.replace('h_step2', 'distance_matrix_allRecHits').replace('.root', '_evt'+str(int(event))+'_v4.npy')
 
     print("Output Transfer To:", saveDir+saveName)
     np.save(saveName, matrix)

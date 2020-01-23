@@ -4,10 +4,6 @@ from Configuration.StandardSequences.Eras import eras
 from myParam_cff import *
 
 filename=filename.replace("step1", "step2")
-#filename="step3_200PU.root"
-
-#filename="step2_211_Vtx_pt20.root"
-#filename="step2_r160_r160_e100_p22_testGit.root"
 
 process = cms.Process("runAnalyzer", eras.Phase2C8_timing_layer_bar)
 
@@ -32,8 +28,6 @@ process.load('MyHGCal.HGCalStuties.hgcalRecHitStudyHEScintillator_cfi')
 
 ## HGCal scintillator layer cluster study
 process.load('MyHGCal.HGCalStuties.hgcalLayerClusterStudyHESintillator_cfi')
-
-#filename="step2_eta2p5_eta2p5_pt10_pt20_p211_100.root"
 
 ## HGCal Ntuple
 #process.load("RecoLocalCalo.Configuration.hgcalLocalReco_cff")
@@ -60,6 +54,7 @@ process.hgcalHitNtuple.dEdXweights = cms.vdouble(
         )
 
 process.source = cms.Source("PoolSource",
+                            #fileNames = cms.untracked.vstring("file:root://cmseos.fnal.gov//eos/uscms/store/user/zhangj/HGC/HDBSCAN/"+filename)
                             fileNames = cms.untracked.vstring("file:"+filename)
                             #skipEvents=cms.untracked.uint32(1)
 )

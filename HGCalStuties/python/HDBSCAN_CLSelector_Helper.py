@@ -54,9 +54,14 @@ def calc_stability(cells, clusters, mothers_idx, daughters_idx):
         cluster = clusters[cluster_mask]
         if len(cluster)>0:
             lambda_death = cluster[0][2]
-        else: lambda_death = 9999
+        #else: lambda_death = 9999
+        else:
+            member_mask = cells[:,0] == icl
+            member = cells[member_mask]
+            lambda_death = max(member[:,2])
+        dlambda = lambda_death - lambda_birth
         cluster = cluster[:, 1]
-        if False:
+        if False:    ### use for debugging
             if len(cluster)>0:
                 print("-----", icl, cluster[0][3])
                 print(find_children(icl, clusters, mothers_idx)[:,1])
@@ -68,20 +73,23 @@ def calc_stability(cells, clusters, mothers_idx, daughters_idx):
         
         descendants = find_descendants(cluster, clusters, mothers_idx)
         if len(descendants)>0:
-            if lambda_death == 9999: print("ERROR calculating stability!!!")
-            dlambda = lambda_death - lambda_birth
             n=0
             for desc in descendants:
                 desc_member_mask = cells[:,0] == desc
                 desc_member = cells[desc_member_mask]
                 n+=len(desc_member)
             stability = n * (dlambda)
-        else: stability = 0
+            nhits_desc = n
+        else:
+            stability = 0
+            nhits_desc = 0
+        #print(dlambda)
         cluster_member_mask = cells[:,0] == icl
         cluster_member = cells[cluster_member_mask]
+        nhits = nhits_desc+len(cluster_member)
         stability+=sum(cluster_member[:,2])-len(cluster_member[:,2])*lambda_birth
         desc_stability = 0
-        cl_stability_descendants+=[[icl, stability, descendants, desc_stability, dlambda]]
+        cl_stability_descendants+=[[icl, stability, descendants, desc_stability, nhits, nhits_desc, lambda_birth, lambda_death]]
     
     cl_stability_descendants = np.array(cl_stability_descendants)
 
@@ -170,8 +178,15 @@ def select_eom_clusters(cl_stability_descendants, daughters_idx):
             mask = cl_stability_descendants[:,0] == icl
             cl = cl_stability_descendants[mask][0]
             clusters_ref=clusters_ref[~(clusters_ref==cl[0])]
-            if cl[1] > cl[3] and cl[3]<10000:
-            #if cl[1] > cl[3]:
+            print("Debug ***",cl[0], cl[1], cl[2], cl[3], cl[4], cl[5], cl[6], cl[7])
+            #if (cl[1] > cl[3] and cl[3] < 10000 and cl[6] > 20) or (cl[1] > cl[3] and len(cl[2]) == 0):
+            # v0 final result for 200 PU
+            if (cl[1] > cl[3] and cl[3] < 10000 and cl[6] > 20 and len(cl[2]) < 5) or (cl[1] > cl[3] and len(cl[2]) == 0):
+            # v1 (v2) with dlambda cuts at 10 (3)
+            #if (cl[1] > cl[3] and cl[3] < 10000 and cl[6] > 20 and len(cl[2]) < 4) or (cl[1] > cl[3] and len(cl[2]) == 0) or (cl[7] - cl[6] < 10 and cl[3] < 10000 and cl[6] > 20 and len(cl[2]) < 4):
+            #### used for 0PU final result (v4)
+            #if (cl[1] > cl[3] and cl[3] < 10000 and cl[6] > 20) or (cl[1] > cl[3] and len(cl[2]) == 0) or (cl[7] - cl[6] < 10 and cl[3] < 10000 and cl[6] > 20):
+                print("Debug ---",cl[0], cl[1], cl[2], cl[3], cl[4], cl[5], cl[6], cl[7])
                 eom_clusters+=[cl]
                 for desc in cl[2]:
                     clusters_ref=clusters_ref[~(clusters_ref==desc)]

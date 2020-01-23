@@ -13,7 +13,7 @@ for event in range(1, 101):
     print("Starting to Process Event:", event)
     #if not event==1: continue
 
-    matrixFile='distance_matrix_hdbscan_allRecHits_'+whichSide+'_evt'+str(int(event))+'_v4.npy'
+    matrixFile='distance_matrix_allRecHits_r100_z320_e20_p211_PU200_100_evt'+str(int(event))+'_v4.npy'
 
     os.system("xrdcp "+matrixFileDir+matrixFile+" "+matrixFile)
 
@@ -47,7 +47,7 @@ for event in range(1, 101):
         i+=1
     clMap=np.array(clMap)
 
-    saveName="out_hdbscan_200PU_pt10_pt20_allRecHits_"+whichSide+"_evt"+str(int(event))+"_v4.npz"
+    saveName=matrixFile.replace('distance_matrix', 'out_hdbscan').replace('.npy','.npz')
 
 
     np.savez(saveName,

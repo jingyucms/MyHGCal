@@ -46,12 +46,36 @@ def do_matching(sample, labels, sc, sc_energy_cut, cl_energy_cut, distance_cut):
             
     distances=[]
     for cl in cluster_labels:
+        if cl == -1: continue
         hits_in_cluster = sample[labels==cl]
         cl_energy = sum(hits_in_cluster[:, 4])
         if cl_energy <= cl_energy_cut: continue
         cl_eta = np.mean(hits_in_cluster[:,5])
         cl_phi = calc_mean_phi(hits_in_cluster[:,6])
         distances+=[[distance(sc_eta, sc_phi, cl_eta, cl_phi), cl, cl_energy, sc_energy]]
+
+    distances=np.array(distances)
+    #print(distances)
+    if not len(distances)==0 and not min(distances[:,0]) > distance_cut:
+        m = distances[distances[:,0]==min(distances[:,0])]
+        matched=m[0]
+        cluster_labels.remove(matched[1])
+    else:
+        matched=[0]
+    return matched
+
+def do_matching_cp(sample, labels, cp_eta, cp_phi, cp_energy_rec, distance_cut):
+    cluster_labels=set(labels[labels[:]>=0])
+
+    distances=[]
+    for cl in cluster_labels:
+        if cl == -1: continue
+        hits_in_cluster = sample[labels==cl]
+        cl_energy = sum(hits_in_cluster[:, 4])
+        #if cl_energy < 2: continue
+        cl_eta = np.mean(hits_in_cluster[:,5])
+        cl_phi = calc_mean_phi(hits_in_cluster[:,6])
+        distances+=[[distance(cp_eta, cp_phi, cl_eta, cl_phi), cl, cl_energy, cp_energy_rec]]
 
     distances=np.array(distances)
     #print(distances)
