@@ -66,6 +66,34 @@ void HGCalHDBAlgoT<T, S>::makeClusters() {
 
 template <typename T, typename S>
 std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
+  int totalNumberOfClusters = leaf_clusters_.size();
+  clusters_v_.resize(totalNumberOfClusters);
+
+  std::vector<std::pair<DetId, float>> thisCluster;
+
+  std::vector<std::vector<int>> cellsIdInCluster;
+  cellsIdInCluster.resize(totalNumberOfClusters);
+
+  for (int i = 0; i < nCells_; ++i) {
+    auto clusterIndex = cells_.label[i];
+    if (clusterIndex != -1)
+      cellsIdInCluster[clusterIndex].push_back(i);
+  }
+
+  for (int i = 0; i < totalNumberOfClusters; i++) {
+    auto cl = cellsIdInCluster[i];
+    float energy = 0.f;
+    math::XYZPoint position(0.f, 0.f, 0.f); // undefined for now
+
+    for (auto cellIdx : cl) {
+      energy += cells_.energy[cellIdx];
+      thisCluster.emplace_back(cells_.detid[cellIdx], 1.f);
+    }
+
+    clusters_v_[i] =
+      reco::BasicCluster(energy, position, reco::CaloID::DET_HGCAL_ENDCAP, thisCluster, reco::CaloCluster::AlgoId::undefined);
+    thisCluster.clear();
+  }
   return clusters_v_;
 }
 
