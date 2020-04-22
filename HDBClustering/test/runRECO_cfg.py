@@ -32,7 +32,7 @@ process.maxEvents = cms.untracked.PSet(
 # Input source
 process.source = cms.Source("PoolSource",
     dropDescendantsOfDroppedBranches = cms.untracked.bool(False),
-    fileNames = cms.untracked.vstring('file:'+filename),
+    fileNames = cms.untracked.vstring('file:'+filename.replace("step1","step2")),
     inputCommands = cms.untracked.vstring(
         'keep *', 
         'drop *_genParticles_*_*', 
@@ -72,7 +72,7 @@ process.FEVTDEBUGHLToutput = cms.OutputModule("PoolOutputModule",
         dataTier = cms.untracked.string('GEN-SIM-DIGI-RAW'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:'+filename.replace("step1","step2")),
+    fileName = cms.untracked.string('file:'+filename.replace("step1","step3")),
     outputCommands = process.FEVTDEBUGHLTEventContent.outputCommands,
     splitLevel = cms.untracked.int32(0)
 )
@@ -124,10 +124,13 @@ process.hgcalHDBRec=cms.Path(hgcalHDBRecoSequence)
 
 ## EndPath
 process.endjob_step = cms.EndPath(process.endOfProcess)
+
+process.FEVTDEBUGHLTEventContent.outputCommands += ['keep *_hgcalHDBClusters_*_*']
+
 process.FEVTDEBUGHLToutput_step = cms.EndPath(process.FEVTDEBUGHLToutput)
 
 # Schedule definition
-process.schedule = cms.Schedule(process.digitisation_step,
+process.schedule = cms.Schedule(#process.digitisation_step,
                                 process.hgcalRawToDigis,
                                 #process.hgcalRec,
                                 process.hgcalHDBRec,

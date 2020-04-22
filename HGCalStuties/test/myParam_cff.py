@@ -15,7 +15,7 @@ isD41=False
 #isOverlapping=True
 isOverlapping=False
 
-nevt=100
+nevt=10
 
 #particle=[211, 22]  # pion
 particle=[211]
@@ -32,8 +32,8 @@ etaMax=2.5
 #phiMax=3.1415926
 phiMin=0     
 phiMax=0
-eMin=eMax=300    # used in CloseByParticleGunProducer
-#eMin=eMax=100
+#eMin=eMax=300    # used in CloseByParticleGunProducer
+eMin=eMax=100
 #eMin=eMax=50
 #eMin=eMax=20
 #zMin=410     # front face of HGC scint
@@ -43,8 +43,8 @@ eMin=eMax=300    # used in CloseByParticleGunProducer
 zMin=zMax=320     # ~front of EE 
 #rMin=40
 #rMax=60
-#rMin=rMax=50
-rMin=rMax=100
+rMin=rMax=50
+#rMin=rMax=100
 #delta=15.0
 #delta=12.5
 delta=10.0

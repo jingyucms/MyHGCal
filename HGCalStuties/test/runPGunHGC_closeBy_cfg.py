@@ -1,10 +1,11 @@
 import FWCore.ParameterSet.Config as cms
 
-from Configuration.StandardSequences.Eras import eras
+#from Configuration.StandardSequences.Eras import eras
+from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
 
 from myParam_cff import *
 
-process = cms.Process('SIM',eras.Phase2C8_timing_layer_bar)
+process = cms.Process('SIM',Phase2C9)
 
 # import of standard configurations
 process.load('Configuration.StandardSequences.Services_cff')
@@ -12,8 +13,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D41Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D41_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D52Reco_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D52_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')

@@ -3,11 +3,11 @@
 
 #include "MyHGCal/HDBClustering/interface/HGCalAngularTilesConstants.h"
 
-//#include <vector>
-//#include <array>
-//#include <cmath>
-//#include <algorithm>
-//#include <cassert>
+#include <vector>
+#include <array>
+#include <cmath>
+#include <algorithm>
+#include <cassert>
 
 template <typename T>
 class HGCalAngularTilesT {

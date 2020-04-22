@@ -181,7 +181,7 @@ HGCalHitNtuple::HGCalHitNtuple(const edm::ParameterSet& iConfig) :
 
   caloParticleSource_ = consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("sourceCaloParticle"));
 
-  layerClusterSource_ = consumes<std::vector<reco::CaloCluster>>(iConfig.getParameter<edm::InputTag>("sourceLayerCluster"));
+  //layerClusterSource_ = consumes<std::vector<reco::CaloCluster>>(iConfig.getParameter<edm::InputTag>("sourceLayerCluster"));
 
   //multiClusterSource_ = consumes<std::vector<reco::HGCalMultiCluster>>(iConfig.getParameter<edm::InputTag>("sourceMultiCluster"));
 }
@@ -198,6 +198,7 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.add<edm::ParameterSetDescription>("noises", descNestedNoises);
   edm::ParameterSetDescription descNestedNoiseMIP;
   descNestedNoiseMIP.add<bool>("scaleByDose", false);
+  descNestedNoiseMIP.add<unsigned int>("scaleByDoseAlgo", 0);
   desc.add<edm::ParameterSetDescription>("scaleByDose", descNestedNoiseMIP);
   descNestedNoiseMIP.add<std::string>("doseMap", "");
   desc.add<edm::ParameterSetDescription>("doseMap", descNestedNoiseMIP);
@@ -211,7 +212,7 @@ void HGCalHitNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.add<edm::InputTag>("sourceHESi", edm::InputTag("HGCalRecHit", "HGCHEFRecHits"));
   desc.add<edm::InputTag>("sourceHEScint", edm::InputTag("HGCalRecHit", "HGCHEBRecHits"));
   desc.add<edm::InputTag>("sourceCaloParticle", edm::InputTag("mix", "MergedCaloTruth"));
-  desc.add<edm::InputTag>("sourceLayerCluster",edm::InputTag("hgcalLayerClusters",""));
+  //desc.add<edm::InputTag>("sourceLayerCluster",edm::InputTag("hgcalLayerClusters",""));
   //desc.add<edm::InputTag>("sourceMultiCluster",edm::InputTag("multiClustersFromTrackstersEM", "MultiClustersFromTracksterByCA"));
   desc.addUntracked<int>("verbosity", 0);
   descriptions.add("hgcalHitNtuple", desc);
@@ -280,8 +281,8 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
   edm::Handle<std::vector<CaloParticle>> handleTheCaloParticle;
   iEvent.getByToken(caloParticleSource_, handleTheCaloParticle);
 
-  edm::Handle<std::vector<reco::CaloCluster> > handleTheLayerClusters;
-  iEvent.getByToken(layerClusterSource_, handleTheLayerClusters);
+  //edm::Handle<std::vector<reco::CaloCluster> > handleTheLayerClusters;
+  //iEvent.getByToken(layerClusterSource_, handleTheLayerClusters);
 
   //edm::Handle<std::vector<reco::HGCalMultiCluster> > handleTheMultiClusters;
   //iEvent.getByToken(multiClusterSource_, handleTheMultiClusters);
@@ -310,7 +311,7 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
   fill_cp_tree_(Event, *handleTheCaloParticle, hitmap);
 
-  fill_lc_tree_(Event, *handleTheLayerClusters, hitmap);
+  //fill_lc_tree_(Event, *handleTheLayerClusters, hitmap);
 
   //fill_lc_ticl_tree_(Event, *handleTheLayerClusters, *handleTheMultiClusters);
 }

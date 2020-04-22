@@ -32,6 +32,7 @@ void HGCalHDBAlgoT<T, S>::populate(const HGCRecHitCollection& hits) {
     int offset = ((rhtools_.zside(detid) + 1) >> 1) * maxlayer_;
     int layer = layerOnSide + offset;
 
+    //std::cout << "layer: " << layer << std::endl;
     if (layer < 50) continue;
 
     cells_.detid.emplace_back(detid);
@@ -66,8 +67,10 @@ void HGCalHDBAlgoT<T, S>::makeClusters() {
 
 template <typename T, typename S>
 std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
-  int totalNumberOfClusters = leaf_clusters_.size();
-  clusters_v_.resize(totalNumberOfClusters);
+  //int totalNumberOfClusters = leaf_clusters_.size() + 1;
+  int totalNumberOfClusters = eom_clusters_.size()+1;
+  std::cout << "totalNumberOfClusters: " << totalNumberOfClusters << "\n";
+  clusters_v_.resize(totalNumberOfClusters+1);  
 
   std::vector<std::pair<DetId, float>> thisCluster;
 
@@ -75,13 +78,16 @@ std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
   cellsIdInCluster.resize(totalNumberOfClusters);
 
   for (int i = 0; i < nCells_; ++i) {
-    auto clusterIndex = cells_.label[i];
-    if (clusterIndex != -1)
-      cellsIdInCluster[clusterIndex].push_back(i);
+    auto clusterIndex = cells_.label[i] + 1;  // 0 is noise
+    //if (clusterIndex != -1)
+    //std::cout << clusterIndex << " debug1\n";
+    cellsIdInCluster[clusterIndex].push_back(i);
   }
 
   for (int i = 0; i < totalNumberOfClusters; i++) {
+    //std::cout << i << " debug1\n";
     auto cl = cellsIdInCluster[i];
+    //std::cout << cl.size() << " debug2\n";
     float energy = 0.f;
     math::XYZPoint position(0.f, 0.f, 0.f); // undefined for now
 
@@ -89,7 +95,7 @@ std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
       energy += cells_.energy[cellIdx];
       thisCluster.emplace_back(cells_.detid[cellIdx], 1.f);
     }
-
+    //std::cout << i << " debug3\n";
     clusters_v_[i] =
       reco::BasicCluster(energy, position, reco::CaloID::DET_HGCAL_ENDCAP, thisCluster, reco::CaloCluster::AlgoId::undefined);
     thisCluster.clear();
@@ -128,6 +134,8 @@ void HGCalHDBAlgoT<T, S>::calculateDensity(const T& tile, int NSamples, float de
     //std::cout << distances.size() << "\n";
     if (distances.size() >= 10)
       cells_.rho[i] = distances[NSamples];
+    //if (distances.size() > 1) std::cout << "nearest: " << distances[0] << " " << distances[1] << "\n";
+    //std::cout << "density: " << cells_.rho[i] << "\n";
   }
 }
 
@@ -139,12 +147,13 @@ void HGCalHDBAlgoT<T, S>::findSafeEdges(const T& t, S& set, float delta) {
     float d(9999);
     safeEdge.src = i;
     safeEdge.dest = nCells_-1;
+    //safeEdge.dest = 0;
     safeEdge.weight = d; 
     std::array<int, 4> search_box = t.searchBox(cells_.eta[i] - delta,
 						cells_.eta[i] + delta,
 						cells_.phi[i] - delta,
 						cells_.phi[i] + delta);
-    
+    //std::cout << "1- safeEdge.weight: " << safeEdge.weight << std::endl;
     for (int etaBin = search_box[0]; etaBin < search_box[1] + 1; ++etaBin) {
       for (int phiBin = search_box[2]; phiBin < search_box[3] + 1; ++phiBin) {
 	int binId = t.getGlobalBinByBinEtaPhi(etaBin, phiBin);
@@ -152,6 +161,7 @@ void HGCalHDBAlgoT<T, S>::findSafeEdges(const T& t, S& set, float delta) {
 	
 	for (unsigned int j = 0; j < binSize; j++) {
 	  unsigned int otherId = t[binId][j];
+	  //if (otherId == i) continue;
 	  if (set.find(otherId) == set.find(i)) continue;
 	  float maxRho = std::max(cells_.rho[i], cells_.rho[otherId]);
 	  float weight = std::max(maxRho, distance(i, otherId));
@@ -162,6 +172,7 @@ void HGCalHDBAlgoT<T, S>::findSafeEdges(const T& t, S& set, float delta) {
 	}
       }
     }
+    //std::cout << "2- safeEdge.weight: " << safeEdge.weight << std::endl;
     safeEdges_.emplace_back(safeEdge);
   }
 }
@@ -171,10 +182,13 @@ void HGCalHDBAlgoT<T, S>::buildMST(const T& tile, S& set, float delta) {
   int nTrees = nCells_;
   set.init(nCells_);
   while (nTrees > 1) {
-    std::cout << "buildMST: " << nTrees << "\n";
-    std::cout << safeEdges_.size() << " safeEdge-1\n";
+    // find save edges
+    //std::cout << "buildMST: " << nTrees << "\n";
+    //std::cout << safeEdges_.size() << " safeEdge-1\n";
     findSafeEdges(tile, set, delta);
-    std::cout << safeEdges_.size() << " safeEdge-2\n";
+    //std::cout << safeEdges_.size() << " safeEdge-2\n";
+
+    // find cheapest edges
     std::vector<int> cheapest;
     cheapest.resize(nCells_, -1);
     for (int i = 0; i<nCells_; i++) {
@@ -185,8 +199,12 @@ void HGCalHDBAlgoT<T, S>::buildMST(const T& tile, S& set, float delta) {
       float weight = safeEdge.weight;
       int set_src = set.findWithPathCompression(src);
       int cheapest_in_set = cheapest[set_src];
-      if ((cheapest_in_set == -1) or weight < safeEdges_[cheapest_in_set].weight)
+      if (cheapest_in_set == -1) {
 	cheapest[set_src] = i;
+      } else if (cheapest_in_set != -1 and weight < safeEdges_[cheapest_in_set].weight) {
+	cheapest[set_src] = i;
+      }
+      //std::cout << "cell: " << i << " weight: " << weight << " set: " << set_src << " cheapest: " << cheapest[set_src] << " weight: " << safeEdges_[cheapest[set_src]].weight << "\n";
     }
     for (int i = 0; i<nCells_; i++) {
       //std::cout << "cheapest " << i << ": " << cheapest[i] << "\n";
@@ -224,8 +242,11 @@ void HGCalHDBAlgoT<T, S>::buildSLT(S& set) {
   set.init(nCells_);
   int parent = nEdges;
   std::cout << "buildSLT: " << min_span_tree_.size() << "\n";
-  std::cout << "parent: " << nEdges << "\n";
+  //std::cout << "parent: " << nEdges << "\n";
   for (int i = 0; i < nEdges; i++) {
+    std::cout << "MST:      " << min_span_tree_[i].src
+	      << " " << min_span_tree_[i].dest
+	      << " " << min_span_tree_[i].weight << "\n";
     parent++;
     single_linkage_tree_.weight[i] = min_span_tree_[i].weight;
     single_linkage_tree_.parent[i] = parent;
@@ -255,6 +276,11 @@ void HGCalHDBAlgoT<T, S>::buildSLT(S& set) {
     set.setLinkageNode(src, parent);
     single_linkage_tree_.size[i] = set.getRootRank(src);
     //std::cout << "size " << set.getRootRank(src) << "\n";
+    std::cout << "SLT: " << single_linkage_tree_.parent[i]
+	      << " " << single_linkage_tree_.left[i]
+	      << " " << single_linkage_tree_.right[i]
+	      << " " << single_linkage_tree_.weight[i]
+	      << " " << single_linkage_tree_.size[i] << "\n";
   }
 }
 
@@ -264,6 +290,7 @@ void HGCalHDBAlgoT<T, S>::prepareClusterHierarchyStructures() {
   condensed_tree_.child.resize(nCells_, -1);
   condensed_tree_.lambda.resize(nCells_, -1);
   condensed_tree_.size.resize(nCells_, 1);
+  condensed_tree_.mass.resize(nCells_, 0);
 }
 
 template <typename T, typename S>
@@ -291,11 +318,12 @@ void HGCalHDBAlgoT<T, S>::buildClusterHierarchy(int NCluster) {
     float lambda = 1/single_linkage_tree_.weight[i];
     bool split = (left >= nCells_ and right >= nCells_ and
 		  getNodeSizeInSLT(left, i) > NCluster and
-		  getNodeSizeInSLT(right, i) > NCluster);
-    std::cout << i << " split: " << split
-	      << " parent: " << parent_in_slt
-	      << " left: " << left
-	      << " right: " << right << "\n";
+		  getNodeSizeInSLT(right, i) > NCluster and
+		  lambda > 1.);
+    //std::cout << i << " split: " << split
+    //	      << " parent: " << parent_in_slt
+    //	      << " left: " << left
+    //	      << " right: " << right << "\n";
     int previous_split_in_slt, previous_split_in_hierarchy;
     if (isRoot) {
       previous_split_in_slt = root_in_slt;
@@ -304,7 +332,7 @@ void HGCalHDBAlgoT<T, S>::buildClusterHierarchy(int NCluster) {
       previous_split_in_slt = findPreSplitInSLT(parent_in_slt, i);
       previous_split_in_hierarchy = findPreSplitInHierarchy(previous_split_in_slt);
     }
-    std::cout << "previous split in slt/den: " << previous_split_in_slt << " " << previous_split_in_hierarchy << "\n";
+    //std::cout << "previous split in slt/den: " << previous_split_in_slt << " " << previous_split_in_hierarchy << "\n";
     if (split) {
       std::cout << " ------ Split!" << "\n";
       for (int k = 1; k <=2; k++) {
@@ -312,53 +340,65 @@ void HGCalHDBAlgoT<T, S>::buildClusterHierarchy(int NCluster) {
 	condensed_tree_.lambda.emplace_back(lambda);
 	condensed_tree_.size.emplace_back(0);
 	cluster_hierarchy_count++;
-	std::cout << "cluster_hierarchy_count: " << cluster_hierarchy_count << "\n";
+	std::cout << "left: " << left
+		  << " right: " << right
+		  << " parent: " << parent_in_slt
+		  << " lambda: " << lambda
+		  << " previous_split_in_hierarchy: " << previous_split_in_hierarchy
+		  << " cluster_hierarchy_count: " << cluster_hierarchy_count << "\n";
 	condensed_tree_.child.emplace_back(cluster_hierarchy_count);
 	if (k == 1) nodes_in_slt_.emplace_back(left);
 	else nodes_in_slt_.emplace_back(right);
 	nodes_in_hierarchy_.emplace_back(cluster_hierarchy_count);
       }
-    } else if (left >= nCells_ and right >= nCells_) {
-      continue;
-    } else {
+    } else if (left < nCells_ or right < nCells_ ) {
       condensed_tree_.parent[j] = previous_split_in_hierarchy;
       condensed_tree_.lambda[j] = lambda;
       condensed_tree_.size[j] = 1;
+      int parent_index_in_hierarchy = previous_split_in_hierarchy - 1;
       if (left < nCells_) {
 	condensed_tree_.child[j] = left;
-	int parent_index_in_hierarchy = previous_split_in_hierarchy;
 	if (previous_split_in_hierarchy != root_in_hierarchy) {
-	  std::cout << "sizing: " << previous_split_in_hierarchy << " " << parent_index_in_hierarchy << "\n";
 	  condensed_tree_.size[parent_index_in_hierarchy] ++;
+	  condensed_tree_.mass[parent_index_in_hierarchy] += lambda - condensed_tree_.lambda[parent_index_in_hierarchy];
+	  //std::cout << " parent_index_in_hierarchy: " << parent_index_in_hierarchy
+	  //	    << " " << condensed_tree_.child[parent_index_in_hierarchy] << "\n";
 	}
 	j++;
       }
       if (right < nCells_) {
 	condensed_tree_.child[j] = right;
-	int parent_index_in_hierarchy = previous_split_in_hierarchy;
+	
 	if (previous_split_in_hierarchy != root_in_hierarchy) {
-	  std::cout << "sizing: " << previous_split_in_hierarchy << " " << parent_index_in_hierarchy << "\n";
 	  condensed_tree_.size[parent_index_in_hierarchy] ++;
+	  condensed_tree_.mass[parent_index_in_hierarchy] += lambda - condensed_tree_.lambda[parent_index_in_hierarchy];
+	  //std::cout << " parent_index_in_hierarchy: " << parent_index_in_hierarchy
+	  //	    << " " << condensed_tree_.child[parent_index_in_hierarchy] << "\n";
 	}
 	j++;
       }
     }
   }
+  hierarchySize_ = condensed_tree_.parent.size();
 }
 
 template <typename T, typename S>
 void HGCalHDBAlgoT<T, S>::assignClusters() {
   std::cout << "assignClusters: " << condensed_tree_.parent.size() << "\n";
-  leaf_clusters_.clear();
+  //leaf_clusters_.clear();
   findLeafClusters();
-  std::cout << "leafClusters: " << leaf_clusters_.size() << "\n";
+  //std::cout << "leafClusters: " << leaf_clusters_.size() << "\n";
+  eom_clusters_.clear();
+  findEOMClusters();
+  std::cout << "eomClusters: " << eom_clusters_.size() << "\n";
   for (int i = 0; i < nCells_; i++) {
     int cell = condensed_tree_.child[i];
     int parent = condensed_tree_.parent[i];
-    int label = findClusterIdx(parent);
+    //int label = findClusterIdxInLeafClusters(parent);
+    int label = findClusterIdxInEOMClusters(parent);
     cells_.label[cell] = label;
   }
-  std::cout << "Number of Cluster: " << *max_element(cells_.label.begin(), cells_.label.end()) << "\n"; 
+  //std::cout << "Number of Cluster: " << *max_element(cells_.label.begin(), cells_.label.end()) << "\n"; 
 }
 
 template <typename T, typename S>

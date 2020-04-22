@@ -5,7 +5,7 @@ from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
 
 from myParam_cff import *
 
-process = cms.Process('RECO',Phase2C9)
+process = cms.Process('DIGI',Phase2C9)
 
 # import of standard configurations
 process.load('Configuration.StandardSequences.Services_cff')
@@ -92,45 +92,15 @@ process.digitisation_step = cms.Path(process.pdigi_valid)
 process.load('Configuration.StandardSequences.RawToDigi_cff')
 process.hgcalRawToDigis=cms.Path(process.hgcalDigis)
 
-## HGCal Rec Hits
-#from RecoLocalCalo.HGCalRecProducers.HGCalUncalibRecHit_cfi import *
-#from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import *
-
-process.load("RecoLocalCalo.Configuration.hgcalLocalReco_cff")
-#process.hgcalRec=cms.Path(process.HGCalUncalibRecHit+process.HGCalRecHit+process.hgcalLayerClusters)
-process.hgcalRec=cms.Path(process.hgcalLocalRecoSequence)
-
-process.load("MyHGCal.HDBClustering.hgcalHDBReco_cff")
-from MyHGCal.HDBClustering.hgcalHDBReco_cff import hgcalHDBRecoSequence
-process.hgcalHDBRec=cms.Path(hgcalHDBRecoSequence)
-
-#from RecoParticleFlow.Configuration.RecoParticleFlow_cff import *
-#process.load("RecoParticleFlow.Configuration.RecoParticleFlow_cff")
-#process.phase2PF=cms.Path(process._phase2_hgcal_simPFSequence)
-
-#process.load("RecoParticleFlow.PFProducer.simPFProducer_cfi")
-#process.load("RecoParticleFlow.PFTracking.hgcalTrackCollection_cfi")
-#process.phase2SimPF=cms.Path(process.hgcalTrackCollection+process.simPFProducer)
-
-#process.HGCalUncalibRecHit.HGCEEConfig.fCPerMIP = fCPerMIP_v9
-#process.HGCalUncalibRecHit.HGCHEFConfig.fCPerMIP = fCPerMIP_v9
-#process.HGCalRecHit.layerWeights = dEdX_weights_v10
-#process.HGCalRecHit.thicknessCorrection = cms.vdouble(0.759,0.760,0.773) # v9
-#process.HGCalRecHit.thicknessCorrection = cms.vdouble(0.781,0.775,0.769) # v10
-#process.HGCalRecHit.HGCEE_fCPerMIP = fCPerMIP_v9
-#process.HGCalRecHit.HGCHEF_fCPerMIP = fCPerMIP_v9
-
-#from RecoLocalCalo.HGCalRecProducers.hgcalLayerClusters_cff import *
-
 ## EndPath
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.FEVTDEBUGHLToutput_step = cms.EndPath(process.FEVTDEBUGHLToutput)
 
 # Schedule definition
 process.schedule = cms.Schedule(process.digitisation_step,
-                                process.hgcalRawToDigis,
+                                #process.hgcalRawToDigis,
                                 #process.hgcalRec,
-                                process.hgcalHDBRec,
+                                #process.hgcalHDBRec,
                                 #process.phase2SimPF,
                                 process.FEVTDEBUGHLToutput_step)
 
@@ -141,20 +111,3 @@ from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEar
 process = customiseEarlyDelete(process)
 # End adding early deletion
 
-#process.SimpleMemoryCheck = cms.Service("SimpleMemoryCheck",
-#    ignoreTotal = cms.untracked.int32(1)
-#)
-
-##process.MessageLogger = cms.Service(
-##    "MessageLogger",
-##    destinations = cms.untracked.vstring(
-##        'detailedInfo',
-##        'critical'
-##    ),
-##    detailedInfo = cms.untracked.PSet(
-##        threshold = cms.untracked.string('DEBUG')
-##    ),
-##    debugModules = cms.untracked.vstring(
-##        '*'
-##    )
-##)
