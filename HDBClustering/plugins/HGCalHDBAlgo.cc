@@ -39,6 +39,9 @@ void HGCalHDBAlgoT<T, S>::populate(const HGCRecHitCollection& hits) {
     cells_.layer.emplace_back(layer);
     cells_.eta.emplace_back(position.eta());
     cells_.phi.emplace_back(position.phi());
+    cells_.x.emplace_back(position.x());
+    cells_.y.emplace_back(position.y());
+    cells_.z.emplace_back(position.z());
     cells_.energy.emplace_back(hgrh.energy());
     cells_.sigmaNoise.emplace_back(sigmaNoise);
   }
@@ -89,7 +92,7 @@ std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
     auto cl = cellsIdInCluster[i];
     //std::cout << cl.size() << " debug2\n";
     float energy = 0.f;
-    math::XYZPoint position(0.f, 0.f, 0.f); // undefined for now
+    math::XYZPoint position = calculatePosition(cl); // undefined for now
 
     for (auto cellIdx : cl) {
       energy += cells_.energy[cellIdx];
@@ -101,6 +104,36 @@ std::vector<reco::BasicCluster> HGCalHDBAlgoT<T, S>::getClusters() {
     thisCluster.clear();
   }
   return clusters_v_;
+}
+
+template <typename T, typename S>
+math::XYZPoint HGCalHDBAlgoT<T, S>::calculatePosition(const std::vector<int>& cl) const {
+  float z = 0.f;
+  float x = 0.f;
+  float y = 0.f;
+
+  int minLayer = 100;
+  for (auto idx : cl) {
+    if (cells_.layer[idx] < minLayer) minLayer = cells_.layer[idx];
+  }
+
+  std::vector<int> cellsOnLayer;
+  for (auto idx : cl) {
+    if (cells_.layer[idx] == minLayer) cellsOnLayer.push_back(idx);
+  }
+
+  std::vector<float> X;
+  std::vector<float> Y;
+  for (auto idx : cellsOnLayer) {
+    X.push_back(cells_.x[idx]);
+    Y.push_back(cells_.y[idx]);
+    z = cells_.z[idx];
+  }
+
+  x = std::accumulate( X.begin(), X.end(), 0.0) / X.size();
+  y = std::accumulate( Y.begin(), Y.end(), 0.0) / Y.size();
+
+  return math::XYZPoint(x, y, z);
 }
 
 template <typename T, typename S>

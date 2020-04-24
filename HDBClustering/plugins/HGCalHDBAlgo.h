@@ -108,6 +108,9 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
     std::vector<int> layer;
     std::vector<float> eta;
     std::vector<float> phi;
+    std::vector<float> x;
+    std::vector<float> y;
+    std::vector<float> z;
     std::vector<float> energy;
     std::vector<float> rho;
     std::vector<float> sigmaNoise;
@@ -118,6 +121,9 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
       layer.clear();
       eta.clear();
       phi.clear();
+      x.clear();
+      y.clear();
+      z.clear();
       energy.clear();
       rho.clear();
       sigmaNoise.clear();
@@ -362,6 +368,7 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
   void prepareClusterHierarchyStructures();
   void buildClusterHierarchy(int NCluster);
   void assignClusters();
+  math::XYZPoint calculatePosition(const std::vector<int>& v) const;
 
   inline float distance2(int cell1, int cell2) const {  // distance squared
     float d2 = 9999;
@@ -380,7 +387,7 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
     float d = 9999;
     if (d2 < 9000) {
       d = std::sqrt(d2);
-      if (cells_.layer[cell1] > 77 and cells_.layer[cell1] <90 and cells_.layer[cell2] > 77 and  cells_.layer[cell2] < 90) d = d/2;
+      if (cells_.layer[cell1] > 77 and cells_.layer[cell1] < 90 and cells_.layer[cell2] > 77 and  cells_.layer[cell2] < 90) d = d/2;
       if (cells_.layer[cell1] > 89 and cells_.layer[cell2] > 89) d = d/4;
     }
     return d;
