@@ -9,17 +9,17 @@ def etaToR(eta, Z):
 #fromVtx=True
 fromVtx=False
 
-#isD41=True
-isD41=False
+isPU200=True
+#isPU200=False
 
 #isOverlapping=True
 isOverlapping=False
 
-nevt=10
+nevt=100
 
 #particle=[211, 22]  # pion
 particle=[211]
-nparticles=2
+nparticles=1
 #ptMin=5
 #ptMax=10
 ptMin=10   #used in FlatRandomPtGunProducer
@@ -55,7 +55,7 @@ print(etaToR(1.8, 320), etaToR(2.2, 320), etaToR(2.5, 320), etaToR(2.7, 320))
 if not fromVtx:
     if nparticles<2:
         filename="step1_r"+str(rMin).replace(".","p")+"_z"+str(zMin).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+".root"
-        if isD41:
+        if isPU200:
             filename = filename.replace(".root","_PU200_"+str(nevt)+".root")
     else:
         if len(set(particle))>1:
@@ -64,5 +64,5 @@ if not fromVtx:
             filename="step1_r"+str(rMin).replace(".","p")+"_z"+str(zMin).replace(".","p")+"_e"+str(eMin).replace(".","p")+"_p"+str(particle[0])+"_delta"+str(delta).replace(".","p")+".root"
 else:
     filename="step1_eta"+str(etaMin).replace(".","p")+"_eta"+str(etaMin).replace(".","p")+"_pt"+str(ptMin).replace(".","p")+"_pt"+str(ptMax).replace(".","p")+"_p"+str(particle[0])+".root"
-    if isD41:
+    if isPU200:
         filename = filename.replace(".root","_PU200_"+str(nevt)+".root")

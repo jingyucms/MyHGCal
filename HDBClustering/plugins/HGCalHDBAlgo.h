@@ -22,9 +22,10 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
  public :
   
  HGCalHDBAlgoT(const edm::ParameterSet& ps)
-   : HGCalHDBClusteringAlgoBase((HGCalHDBClusteringAlgoBase::VerbosityLevel)ps.getUntrackedParameter<unsigned int>("verbosity", 3)),
-     NSamples_(ps.getParameter<unsigned int>("NSamples")),
-     NCluster_(ps.getParameter<unsigned int>("NCluster")),
+   : HGCalHDBClusteringAlgoBase((HGCalHDBClusteringAlgoBase::VerbosityLevel)ps.getUntrackedParameter<unsigned int>("verbosity", 1)),
+     NSamples_(ps.getParameter<int>("NSamples")),
+     NCluster_(ps.getParameter<int>("NCluster")),
+     Algo_(ps.getParameter<unsigned int>("Algo")),
      delta_(ps.getParameter<double>("delta")),
      ecut_(ps.getParameter<double>("ecut")),
      dEdXweights_(ps.getParameter<std::vector<double>>("dEdXweights")),
@@ -37,11 +38,12 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
   ~HGCalHDBAlgoT() override {}
 
   static void fillPSetDescription(edm::ParameterSetDescription& iDesc){
-    iDesc.add<unsigned int>("NSamples", 20);
-    iDesc.add<unsigned int>("NCluster", 40);
+    iDesc.add<int>("NSamples", 10);
+    iDesc.add<int>("NCluster", 40);
+    iDesc.add<unsigned int>("Algo", 1);
     iDesc.add<double>("delta", 0.04);
     iDesc.add<double>("ecut", 3.0);
-    iDesc.addUntracked<unsigned int>("verbosity", 3);
+    iDesc.addUntracked<unsigned int>("verbosity", 2);
     iDesc.add<std::vector<double>>("dEdXweights", {});
     iDesc.add<std::vector<double>>("thicknessCorrection", {});
     iDesc.add<std::vector<double>>("fcPerMip", {});
@@ -76,9 +78,14 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
  private:
 
   // The two parameters used to identify clusters
-  unsigned int NSamples_;
-  unsigned int NCluster_;
+  int NSamples_;
+  int NCluster_;
 
+  // Which algo to use
+  // 0: leaf clustering
+  // 1: eom clustering
+  unsigned int Algo_;
+  
   // Search Radius
   double delta_;
 
@@ -183,6 +190,8 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
   std::vector<int> nodes_in_hierarchy_;
   
   inline int findPreSplitInSLT(int node, int start_idx) {
+    if (verbosity_ > 2)
+      std::cout << "findPreSplitInSLT: " << node << "\n";
     if (std::find(nodes_in_slt_.rbegin(), nodes_in_slt_.rend(), node) != nodes_in_slt_.rend()) return node;
     for (int i = start_idx; i<nCells_; i++) {
       if (single_linkage_tree_.left[i] != node and single_linkage_tree_.right[i] != node)
@@ -220,16 +229,26 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
   
   std::vector<int> leaf_clusters_;
   void findLeafClusters() {
-    std::cout << "hierarchySize_: " << hierarchySize_ << std::endl;
+    if (verbosity_ > 1) {
+      std::cout << "findLeafClusters: \n";
+      std::cout << "hierarchySize_: " << hierarchySize_ << std::endl;
+    }
     for (int i = nCells_; i < hierarchySize_; i++) {
-      std::cout << " parent: " << condensed_tree_.parent[i]
-		<< " child: "  << condensed_tree_.child[i]
-		<< " lambda: " << condensed_tree_.lambda[i]
-		<< " size: "   << condensed_tree_.size[i]
-		<< " mass: "   << condensed_tree_.mass[i] << "\n";
+      if (condensed_tree_.lambda[i] < 10 and condensed_tree_.size[i] < 20) continue;
+      if (verbosity_ > 1) {
+	std::cout << " parent: " << condensed_tree_.parent[i]
+		  << " child: "  << condensed_tree_.child[i]
+		  << " lambda: " << condensed_tree_.lambda[i]
+		  << " size: "   << condensed_tree_.size[i]
+		  << " mass: "   << condensed_tree_.mass[i] << "\n";
+      }
       int cluster = condensed_tree_.child[i];
-      bool find = std::find(condensed_tree_.parent.begin() + nCells_, condensed_tree_.parent.end(), cluster) == condensed_tree_.parent.end() ;
-      if (!find) leaf_clusters_.emplace_back(cluster);
+      bool find = std::find(condensed_tree_.parent.begin() + nCells_, condensed_tree_.parent.end(), cluster) != condensed_tree_.parent.end() ;
+      if (!find) {
+	leaf_clusters_.emplace_back(cluster);
+	if (verbosity_ > 1) 
+	  std::cout << "LEAF: " << cluster << "!\n";
+      }
     }
   }
 
@@ -241,44 +260,56 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
   
   std::vector<std::vector<int>> eom_clusters_;
   void findEOMClusters() {
-    //int hierarchySize = condensed_tree_.parent.size();
+    if (verbosity_ > 1) std::cout << "findEOMClusters: \n";
     int rootNode = nCells_;
 
     for (int i = rootNode; i < hierarchySize_; i++) {
       int node = condensed_tree_.child[i];
-      std::cout << "node: " << node << "\n";
-      auto children = findChildren(node);
       float lambda_birth = condensed_tree_.lambda[i];
       float lambda_death = -1;
+      //if (lambda_birth < 10) continue;
+      if (condensed_tree_.lambda[i] < 10 and condensed_tree_.size[i] < 20) continue;
+      if (verbosity_ > 1) std::cout << "node: " << node << "\n";
+      auto children = findChildren(node);
       auto ifind = std::find(condensed_tree_.parent.begin() + rootNode, condensed_tree_.parent.end(), node);
       if (ifind != condensed_tree_.parent.end()) {
 	int idx = std::distance(condensed_tree_.parent.begin(), ifind);
 	lambda_death = condensed_tree_.lambda[idx];
       }
       int nChildren = calcNChildren(i, children);
-      std::cout << "lambda_death: " << lambda_death
-		<< " lambda_birth: " << lambda_birth
-		<< " nChildren: " << nChildren << "\n";
-      if (lambda_death != -1)
-	condensed_tree_.mass[i] += (lambda_death - lambda_birth) * nChildren; 
+      if (verbosity_ > 1) 
+	std::cout << "lambda_death: " << lambda_death
+		  << " lambda_birth: " << lambda_birth
+		  << " nChildren: " << nChildren << "\n";
+      //if (lambda_death > 0)
+      condensed_tree_.mass[i] += (lambda_death - lambda_birth) * nChildren; 
     }
 
     std::vector<int> selected;
     for (int i = rootNode; i < hierarchySize_; i++) {
-      std::cout << "Selected: ";
-      for (int s : selected) std::cout << s << " ";
-      std::cout << "\n";
+      float massNode = condensed_tree_.mass[i];
+      float lambdaNode = condensed_tree_.lambda[i];
+      //if (lambdaNode < 10) continue;
+      if (condensed_tree_.lambda[i] < 10 and condensed_tree_.size[i] < 20) continue;
       int node = condensed_tree_.child[i];
-      std::cout << "node: " << node << "\n";
+      if (verbosity_ > 1) {
+	std::cout << "node: " << node << "\n";
+	std::cout << "Selected: ";
+	for (int s : selected) std::cout << s << " ";
+	std::cout << "\n";
+      }
       auto iselected = std::find(selected.begin(), selected.end(), node);
       if (iselected != selected.end()) continue;
       auto children = findChildren(node);
       int sizeChildren = children.size();
       float massChildren = calcMassChildren(i, children);
-      float massNode = condensed_tree_.mass[i];
-      std::cout << "massNode: " << massNode << " mass children: " << massChildren << "\n";
-      //if (massNode > massChildren and sizeChildren < 5) {
-      if (massNode > massChildren and sizeChildren < 5) {
+      if (verbosity_ > 1) std::cout << "massNode: " << massNode
+				    << " massChildren: " << massChildren
+				    << " lambdaNode: " << lambdaNode << "\n";
+      bool iselect = ((massChildren == 0) or
+		      (massChildren != 0 and massNode > massChildren and sizeChildren < 5 and massNode < 50000));// or
+		      //(massChildren != 0 and massNode > 2 * massChildren and sizeChildren < 3));
+      if (iselect) {
 	children.emplace_back(node);
 	eom_clusters_.emplace_back(children);
 	//selected.emplace_back(node);
@@ -296,10 +327,8 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
     while (!q.empty() and protection < 100) {
       protection ++ ; 
       int inode = q.front();
-      //std::cout << "inode: " << inode << "\n";
       for (int i = rootNode; i < hierarchySize_+1; i++) {
 	if (inode == condensed_tree_.parent[i] and i != hierarchySize_) {
-	  //std::cout << "Debug1: " << i << " " << condensed_tree_.parent[i] << "\n";
 	  q.emplace(condensed_tree_.child[i]);
 	  q.emplace(condensed_tree_.child[i]+1);
 	  children.emplace_back(condensed_tree_.child[i]);
@@ -307,17 +336,10 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
 	  q.pop();
 	  break;
 	} else if (i == hierarchySize_) {
-	  //std::cout << "Debug2\n";
-	  //queue.erase(queue.begin());
 	  q.pop();
 	  break;
 	}
       }
-      //std::cout << "inode: " << inode
-      //	<< " size of Queue: " << q.size()
-      //	<< " size of children: " << children.size() << "\n";
-      //for (int s: children) std::cout << s << " ";
-      //std::cout << "\n";
     }
     return children;
   }
@@ -387,8 +409,10 @@ class HGCalHDBAlgoT : public HGCalHDBClusteringAlgoBase {
     float d = 9999;
     if (d2 < 9000) {
       d = std::sqrt(d2);
-      if (cells_.layer[cell1] > 77 and cells_.layer[cell1] < 90 and cells_.layer[cell2] > 77 and  cells_.layer[cell2] < 90) d = d/2;
-      if (cells_.layer[cell1] > 89 and cells_.layer[cell2] > 89) d = d/4;
+      //if (cells_.layer[cell1] > 77 and cells_.layer[cell1] < 90 and cells_.layer[cell2] > 77 and  cells_.layer[cell2] < 90) d = d/2;
+      //if (cells_.layer[cell1] > 89 and cells_.layer[cell2] > 89) d = d/4;
+      if (cells_.layer[cell1] > 77 and cells_.layer[cell1] < 90) d = d/2;
+      if (cells_.layer[cell1] > 89) d = d/4;
     }
     return d;
   }  
