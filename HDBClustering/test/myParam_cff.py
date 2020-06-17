@@ -47,10 +47,10 @@ rMin=rMax=50
 #rMin=rMax=100
 #delta=15.0
 #delta=12.5
-delta=10.0
+delta=100.0
 #delta=7.5
 
-print(etaToR(1.8, 320), etaToR(2.2, 320), etaToR(2.5, 320), etaToR(2.7, 320))
+print(etaToR(1.8, 320), etaToR(2.2, 320), etaToR(2.55, 320), etaToR(2.7, 320))
 
 if not fromVtx:
     if nparticles<2:

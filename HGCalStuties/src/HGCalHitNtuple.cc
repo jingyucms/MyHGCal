@@ -305,9 +305,9 @@ void HGCalHitNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
   computeRegionBoundary(*handleTheCaloParticle);
   //std::cout << "Debug2: " << regionEtaMin_ << " | " << regionEtaMax_ << " | " << regionPhiMin_ << " | " << regionPhiMax_ << "\n";
-  fill_rec_tree_(Event, *handleTheRecHitsEE);
-  fill_rec_tree_(Event, *handleTheRecHitsHESi);
-  fill_rec_tree_(Event, *handleTheRecHitsHEScint);
+  //fill_rec_tree_(Event, *handleTheRecHitsEE);
+  //fill_rec_tree_(Event, *handleTheRecHitsHESi);
+  //fill_rec_tree_(Event, *handleTheRecHitsHEScint);
 
   fill_cp_tree_(Event, *handleTheCaloParticle, hitmap);
 

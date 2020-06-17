@@ -3,11 +3,11 @@ import FWCore.ParameterSet.Config as cms
 from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
 
 from myParam_cff import *
-filename=filename.replace("step1", "step3")
+filename=filename.replace("step1", "step3").replace(".root", ".root")
 
 process = cms.Process('ANALYSIS',Phase2C9)
 
-process.load('Configuration.Geometry.GeometryExtended2026D52Reco_cff')
+process.load('Configuration.Geometry.GeometryExtended2026D41Reco_cff')
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag

@@ -15,7 +15,7 @@ events = np.linspace(1,100,100)
 
 inputFileDir='./'
 
-inputFileName="h_step3_r50_z320_e100_p211_delta10p0.root"
+inputFileName="h_step3_r50_z320_e100_p211_delta100p0.root"
 
 inputFile=inputFileDir+inputFileName
 
@@ -155,7 +155,7 @@ for event in events:
         responses+=[response]
         responses_rec+=[response_rec]
 
-        if response < 0.2:
+        if response < 0.2 or response > 1.5:
             print(response_rec, "------")
         else:
             print(response_rec)

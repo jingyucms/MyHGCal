@@ -44,6 +44,8 @@
 
 #include "CLHEP/Units/GlobalSystemOfUnits.h"
 
+#include "DataFormats/Math/interface/deltaPhi.h"
+
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 
 #include "TH1F.h"
@@ -70,7 +72,12 @@ private:
 
   void fill_rechits_in_cluster_tree_(int event, std::vector<reco::CaloCluster> const& cluster, std::map<DetId, const HGCRecHit*> hitmap);
 
+  void fill_cluster_tree_(int event, std::vector<reco::CaloCluster> const& cls);
+
+  void fill_hists_(std::vector<CaloParticle> const& cps, std::vector<reco::CaloCluster> const& cls, std::map<DetId, const HGCRecHit*> hitmap);
+
   void computeThreshold();
+  void computeBoundary(std::vector<CaloParticle> const& cps);
 
   struct HitsInfo {
     HitsInfo() {
@@ -93,6 +100,8 @@ private:
   edm::EDGetToken recHitSourceHEScint_;
   edm::EDGetToken hdbClusterSource_;
   
+  edm::EDGetTokenT<std::vector<CaloParticle>> caloParticleSource_;
+  
   // ----------threshold calculation-----------
   double ecut_;
   std::vector<double> dEdXweights_;
@@ -101,12 +110,18 @@ private:
   double fcPerEle_;
   std::vector<double> nonAgedNoises_;
   double noiseMip_;
+  bool is200PU_;
   int verbosity_;
   
-  HitsInfo rechitsInfo_, rechitsInClusterInfo_;
+  HitsInfo rechitsInfo_, rechitsInClusterInfo_, hdbclusterInfo_;
 
   TTree* RecHitsTree;
   TTree* RecHitsInClusterTree;
+  TTree* HdbClusterTree;
+
+  TH1F* h_reconstructable;
+  TH1F* h_reconstructed;
+  TH1F* h_ratio;
   
   hgcal::RecHitTools rhtools_;
 
@@ -115,6 +130,10 @@ private:
   std::vector<std::vector<double>> thresholds_;
   std::vector<std::vector<double>> v_sigmaNoise_;
 
+  float minEta_;
+  float maxEta_;
+  float minPhi_;
+  float maxPhi_;
 };
 
 HGCalClusterNtuple::HGCalClusterNtuple(const edm::ParameterSet& iConfig) :
@@ -125,6 +144,7 @@ HGCalClusterNtuple::HGCalClusterNtuple(const edm::ParameterSet& iConfig) :
   fcPerEle_(iConfig.getParameter<double>("fcPerEle")),
   nonAgedNoises_(iConfig.getParameter<edm::ParameterSet>("noises").getParameter<std::vector<double>>("values")),
   noiseMip_(iConfig.getParameter<edm::ParameterSet>("noiseMip").getParameter<double>("noise_MIP")),
+  is200PU_(iConfig.getUntrackedParameter<bool>("is200PU", true)),
   verbosity_(iConfig.getUntrackedParameter<int>("verbosity", 0)) {
   usesResource(TFileService::kSharedResource);
   
@@ -133,6 +153,8 @@ HGCalClusterNtuple::HGCalClusterNtuple(const edm::ParameterSet& iConfig) :
   recHitSourceHEScint_ = consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("sourceHEScint"));
 
   hdbClusterSource_ = consumes<std::vector<reco::CaloCluster>>(iConfig.getParameter<edm::InputTag>("sourceHDBCluster"));
+
+  caloParticleSource_ = consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("sourceCaloParticle"));
 }
 
 void HGCalClusterNtuple::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -151,12 +173,14 @@ void HGCalClusterNtuple::fillDescriptions(edm::ConfigurationDescriptions& descri
   descNestedNoiseMIP.add<std::string>("doseMap", "");
   descNestedNoiseMIP.add<double>("noise_MIP", 1. / 100.);
   desc.add<edm::ParameterSetDescription>("noiseMip", descNestedNoiseMIP);
+  desc.addUntracked<bool>("is200PU", true);
   
   desc.add<edm::InputTag>("sourceEE", edm::InputTag("HGCalRecHit", "HGCEERecHits"));
   desc.add<edm::InputTag>("sourceHESi", edm::InputTag("HGCalRecHit", "HGCHEFRecHits"));
   desc.add<edm::InputTag>("sourceHEScint", edm::InputTag("HGCalRecHit", "HGCHEBRecHits"));
   
   desc.add<edm::InputTag>("sourceHDBCluster",edm::InputTag("hgcalHDBClusters","HDBClusters", "RECO"));
+  desc.add<edm::InputTag>("sourceCaloParticle", edm::InputTag("mix", "MergedCaloTruth"));
 
   desc.addUntracked<int>("verbosity", 0);
   descriptions.add("hgcalClusterNtuple", desc);
@@ -168,9 +192,15 @@ void HGCalClusterNtuple::beginRun(edm::Run const&, edm::EventSetup const& iSetup
   edm::Service<TFileService> fs;
   RecHitsTree = fs->make<TTree>("RecHitsTree", "");
   RecHitsInClusterTree = fs->make<TTree>("RecHitsInClusterTree", "");
+  HdbClusterTree = fs->make<TTree>("HdbClusterTree", "");
+
+  h_reconstructable = fs->make<TH1F>("h_reconstructable", "", 1000, 0, 1000);
+  h_reconstructed = fs->make<TH1F>("h_reconstructed", "", 1000, 0, 1000);
+  h_ratio = fs->make<TH1F>("h_ratio", "", 100, 0, 5);
   
   RecHitsTree->Branch("RecHitsInfo", &rechitsInfo_, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:thickness/I:dummy/I");
   RecHitsInClusterTree->Branch("RecHitsInClusterInfo", &rechitsInClusterInfo_, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:layer/I:thickness/I:label/I");
+  HdbClusterTree->Branch("HdbClusterInfo", &hdbclusterInfo_, "event/I:x/F:y/F:z/F:eta/F:phi/F:energy/F:time/F:dummy1/I:dummy2/I:dummy3/I");
 }
 
 void HGCalClusterNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -183,7 +213,6 @@ void HGCalClusterNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup
   computeThreshold();
 
   int Event = iEvent.id().event();
-  
   
   edm::Handle<HGCRecHitCollection> handleTheRecHitsEE;
   iEvent.getByToken(recHitSourceEE_, handleTheRecHitsEE);
@@ -212,11 +241,20 @@ void HGCalClusterNtuple::analyze(const edm::Event& iEvent, const edm::EventSetup
   edm::Handle<std::vector<reco::CaloCluster> > handleTheHDBClusters;
   iEvent.getByToken(hdbClusterSource_, handleTheHDBClusters);
 
+  edm::Handle<std::vector<CaloParticle>> handleTheCaloParticle;
+  iEvent.getByToken(caloParticleSource_, handleTheCaloParticle);
+
+  computeBoundary(*handleTheCaloParticle);
+
   fill_rechits_tree_(Event, *handleTheRecHitsEE);
   fill_rechits_tree_(Event, *handleTheRecHitsHESi);
   fill_rechits_tree_(Event, *handleTheRecHitsHEScint);
 
   fill_rechits_in_cluster_tree_(Event, *handleTheHDBClusters, hitmap);
+
+  fill_cluster_tree_(Event, *handleTheHDBClusters);
+
+  fill_hists_(*handleTheCaloParticle, *handleTheHDBClusters, hitmap);
 }
 
 void HGCalClusterNtuple::fill_rechits_tree_(int event, const HGCRecHitCollection& hits) {
@@ -239,6 +277,7 @@ void HGCalClusterNtuple::fill_rechits_tree_(int event, const HGCRecHitCollection
     rechitsInfo_.time = hit.time();
     //GlobalPoint global = geom->getPosition(detId);
     GlobalPoint global = rhtools_.getPosition(detId);
+    if (is200PU_ and (global.eta() > maxEta_ or global.eta() < minEta_ or global.phi() > maxPhi_ or global.phi() < minPhi_)) continue;
     rechitsInfo_.x = global.x();
     rechitsInfo_.y = global.y();
     rechitsInfo_.z = global.z();
@@ -267,16 +306,95 @@ void HGCalClusterNtuple::fill_rechits_in_cluster_tree_(int event, std::vector<re
       if (hitmap.count(detId)) {
 	rechitsInClusterInfo_.energy = hitmap[detId]->energy() * h_and_f.second;
 	rechitsInClusterInfo_.time = hitmap[detId]->time();
-	
 	GlobalPoint global = rhtools_.getPosition(detId);
+	if (is200PU_ and (global.eta() > maxEta_ or global.eta() < minEta_ or global.phi() > maxPhi_ or global.phi() < minPhi_)) continue;
 	rechitsInClusterInfo_.x = global.x();
 	rechitsInClusterInfo_.y = global.y();
 	rechitsInClusterInfo_.z = global.z();
 	rechitsInClusterInfo_.eta = global.eta();
-	rechitsInClusterInfo_.phi = global.phi();	    
+	rechitsInClusterInfo_.phi = global.phi();
 	RecHitsInClusterTree->Fill();
       }
     }
+  }
+}
+
+void HGCalClusterNtuple::fill_cluster_tree_(int event, std::vector<reco::CaloCluster> const& cls) {
+  for (unsigned int i = 0; i < cls.size(); ++i) {
+    const reco::CaloCluster& cluster = cls[i];
+    hdbclusterInfo_.event = event;
+    hdbclusterInfo_.energy = cluster.energy();
+    hdbclusterInfo_.time = 0;
+    hdbclusterInfo_.x = cluster.x();
+    hdbclusterInfo_.y = cluster.y();
+    hdbclusterInfo_.z = cluster.z();
+    hdbclusterInfo_.eta = cluster.eta();
+    hdbclusterInfo_.phi = cluster.phi();
+    hdbclusterInfo_.layer = 0;
+    hdbclusterInfo_.additional1 = 0;
+    hdbclusterInfo_.additional2 = 0;
+    HdbClusterTree->Fill();
+  }
+}
+
+void HGCalClusterNtuple::fill_hists_(const std::vector<CaloParticle>& cps,
+				     std::vector<reco::CaloCluster> const& cls,
+				     std::map<DetId, const HGCRecHit*> hitmap){
+
+  int size = cps.size();
+  if (size > 2) size = 1;
+
+  std::vector<int> matched;
+  matched.resize(0);
+  for (int i = 0; i < size; ++i) {
+    const CaloParticle& cp = cps[i];
+  
+    float energy_rec = 0.;
+    for (auto const sc : cp.simClusters()) {
+      for (auto const h_and_f : sc->hits_and_fractions()) {
+	if (hitmap.count(h_and_f.first)) {
+	  energy_rec += hitmap[h_and_f.first]->energy() * h_and_f.second;
+	}
+      }
+    }
+    h_reconstructable->Fill(energy_rec);
+    
+    int size = cls.size();
+    float energy, distance;
+    distance = 0.1;
+    energy = 0.;
+    int imatched = -1;
+    for (int j = 1; j < size; ++j) {
+      const reco::CaloCluster& cluster = cls[j];
+      float dist = 9999;
+      for (auto const h_and_f : cluster.hitsAndFractions()) {
+	DetId detId = h_and_f.first;
+	GlobalPoint global = rhtools_.getPosition(detId);
+
+	//int ilayer = rhtools_.getLayerWithOffset(detId)-1;
+	//if (ilayer > 28) continue;
+	
+	float deta = cp.eta() - global.eta();
+	float dphi = reco::deltaPhi(cp.phi(), global.phi());
+	float d = sqrt(deta*deta + dphi*dphi);
+	//std::cout << dist << "\n";
+	if (d < dist) dist = d;
+      }
+      if (dist < distance and std::find(matched.begin(), matched.end(), j) == matched.end()) {
+	imatched = j;
+	energy = cluster.energy();
+	distance = dist;
+      }
+    }
+    matched.push_back(imatched);
+    h_reconstructed->Fill(energy);
+    std::cout << matched << " " << energy << "\n";
+    
+    float ratio = energy/energy_rec;
+    
+    h_ratio->Fill(ratio);
+    
+    if (ratio < 0.25) std::cout << "------\n"; 
   }
 }
 
@@ -310,6 +428,16 @@ void HGCalClusterNtuple::computeThreshold() {
     //std::cout << "ilayer: " << ilayer << " noiseMip: " << noiseMip_
     //<< " scintillators_sigmaNoise: " << scintillators_sigmaNoise << "\n";
   }
+}
+
+void HGCalClusterNtuple::computeBoundary(const std::vector<CaloParticle>& cps){
+  const CaloParticle& cp = cps[0];
+  float cpEta = cp.eta();
+  float cpPhi = cp.phi();
+  minEta_ = cpEta - 0.2;
+  maxEta_ = cpEta + 0.2;
+  minPhi_ = cpPhi - 0.2;
+  maxPhi_ = cpPhi + 0.2;
 }
 
 #include "FWCore/Framework/interface/MakerMacros.h"
